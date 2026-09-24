@@ -1,0 +1,16 @@
+# macOS
+.DS_Store
+
+# Course materials (lecture slides, handouts, starter zips) — keep local, don't publish
+*.pdf
+*.zip
+
+# Raw input data — only publish the result images you show on the pages
+*/data/
+
+# Python
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+.venv/
+venv/
