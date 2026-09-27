@@ -1,16 +1,29 @@
 # macOS
 .DS_Store
 
-# Course materials (lecture slides, handouts, starter zips) — keep local, don't publish
+# Editors
+.vscode/
+.idea/
+
+# Course materials (lecture slides, handouts, assignment PDFs, starter zips, the code zip for Learn) — keep local
 *.pdf
 *.zip
 
-# Raw input data — only publish the result images you show on the pages
-*/data/
+# Raw input data — only publish the result images shown on the pages
+**/data/
+*.tif
+*.tiff
 
 # Python
 __pycache__/
-*.pyc
+*.py[cod]
 .ipynb_checkpoints/
 .venv/
 venv/
+.env
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+*.ipynb
