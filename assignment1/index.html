@@ -1,22 +1,856 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>SYDE 671 Assignment 1</title>
-  <link rel="stylesheet" href="../assets/style.css">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SYDE 671 A1</title>
+<meta name="description" content="SYDE 671 Assignment 1: camera perspective experiments and automatic colorization of the Prokudin-Gorskii glass plates.">
+<style>
+:root {
+  --bg: #ffffff; --surface: #ffffff; --fg: #1a2233; --muted: #5a6475; --border: #dde3ec;
+  --accent: #1f3a68; --accent-soft: #e8edf5; --ok: #2f6f4e; --ok-soft: #e4f1ea; --warn-soft: #fbf1d9;
+  --fail-soft: #f8e6e4;
+  --shadow: 0 1px 2px rgba(20, 30, 55, .06), 0 4px 16px rgba(20, 30, 55, .07);
+  --serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+  --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+:root { color-scheme: light; }
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body { margin: 0; background: var(--bg); color: var(--fg); font: 16.5px/1.65 var(--sans); }
+a { color: var(--accent); }
+img { max-width: 100%; height: auto; display: block; }
+
+.hero { padding: 72px 16px 48px; text-align: center; border-bottom: 1px solid var(--border);
+  background: var(--bg); }
+.hero .kicker { font: 600 13px/1 var(--sans); letter-spacing: .14em; text-transform: uppercase; color: var(--accent); }
+.hero h1 { font: 600 clamp(32px, 5vw, 54px)/1.1 var(--serif); margin: 14px auto 12px; max-width: 900px; }
+.hero p { color: var(--muted); max-width: 680px; margin: 0 auto; }
+.hero .byline { font: 500 17px/1.4 var(--sans); color: var(--muted); margin: 0 auto 4px; }
+.hero .back { position: absolute; left: 16px; top: 16px; font-size: 14px; text-decoration: none; }
+.hero-strip { display: flex; gap: 8px; justify-content: center; margin: 32px auto 0; max-width: 980px; }
+/* Each thumbnail is zoomed inside its frame, cropping the plate borders off all four sides */
+.hero-strip span { width: 25%; aspect-ratio: 1; overflow: hidden; border-radius: 6px; box-shadow: var(--shadow); }
+.hero-strip img { width: 100%; height: 100%; object-fit: cover; transform: scale(1.25); }
+
+.layout { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 48px; max-width: 1240px; margin: 0 auto; padding: 40px 24px 96px; }
+nav.toc { position: sticky; top: 24px; align-self: start; font-size: 14px; max-height: calc(100vh - 48px); overflow: auto; }
+nav.toc b { display: block; font: 600 12px var(--sans); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); margin: 18px 0 6px; }
+nav.toc a { display: block; color: var(--fg); text-decoration: none; padding: 3px 0 3px 10px; border-left: 2px solid var(--border); }
+nav.toc a:hover, nav.toc a.active { border-left-color: var(--accent); color: var(--accent); }
+main { min-width: 0; }
+
+h2 { font: 600 32px/1.2 var(--serif); margin: 72px 0 8px; padding-top: 8px; }
+h2 .part { display: block; font: 600 13px var(--sans); letter-spacing: .14em; text-transform: uppercase; color: var(--accent); margin-bottom: 8px; }
+h3 { font: 600 23px/1.3 var(--serif); margin: 52px 0 10px; scroll-margin-top: 16px; }
+h4 { font: 600 17px/1.3 var(--sans); margin: 28px 0 6px; }
+section > h2:first-child { margin-top: 0; }
+p, li { max-width: 76ch; }
+.lead { font-size: 18px; color: var(--muted); max-width: 72ch; }
+.mono, code { font-family: var(--mono); font-size: .88em; }
+code { background: var(--accent-soft); padding: 1px 5px; border-radius: 4px; }
+
+.callout { background: var(--surface); border: 1px solid var(--border); border-left: 4px solid var(--accent);
+  border-radius: 8px; padding: 14px 18px; margin: 20px 0; max-width: 80ch; box-shadow: var(--shadow); }
+.callout.ok { border-left-color: var(--ok); }
+.callout p { margin: 6px 0; }
+.formula { font: 15px var(--mono); background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+  padding: 12px 16px; margin: 14px 0; overflow-x: auto; max-width: 80ch; white-space: pre; }
+.steps { counter-reset: step; list-style: none; padding: 0; max-width: 80ch; }
+.steps li { counter-increment: step; position: relative; padding: 0 0 12px 44px; }
+.steps li::before { content: counter(step); position: absolute; left: 0; top: 1px; width: 28px; height: 28px;
+  border-radius: 50%; background: var(--accent); color: #fff; font: 600 14px/28px var(--sans); text-align: center; }
+
+figure { margin: 0; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; box-shadow: var(--shadow); }
+figure a { display: block; }
+figcaption { padding: 10px 12px; font-size: 14px; color: var(--muted); }
+figcaption b { color: var(--fg); margin-right: 6px; }
+figcaption .mono { display: block; }
+figure.plain a { background: #fff; }
+.wide { margin: 20px 0; }
+.grid-2, .grid-3, .grid-4, .gallery { display: grid; gap: 16px; margin: 20px 0; }
+.grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.grid-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.gallery { grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); }
+.gallery.big { grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); }
+.pair > div > p { font-size: 15.5px; margin: 12px 2px 0; }
+/* L2 vs. NCC cards: one plate per card, the two results side by side */
+.metric-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); gap: 16px; margin: 20px 0; }
+.metric-grid.full { grid-template-columns: minmax(0, 1fr); }
+.metric-pair { display: grid; grid-template-columns: repeat(var(--n, 2), minmax(0, 1fr)); gap: 2px; background: var(--border); }
+.metric-pair a { position: relative; background: #fff; }
+.metric-card figcaption { display: grid; grid-template-columns: repeat(var(--n, 2), minmax(0, 1fr)); gap: 2px 12px; }
+.metric-card figcaption b { grid-column: 1 / -1; }
+.metric-card figcaption .mono { font-size: 12.5px; }
+.metric-card.diff figcaption { background: var(--warn-soft); }
+.metric-card.fail figcaption { background: var(--fail-soft); }
+.sources { font-size: 13px; color: var(--muted); margin-top: 28px; }
+.pipeline { display: grid; grid-template-columns: 0.55fr 1.4fr 0.8fr 0.8fr; gap: 12px; align-items: end; margin: 20px 0; }
+
+.table-wrap { overflow-x: auto; margin: 16px 0; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); box-shadow: var(--shadow); }
+table { border-collapse: collapse; width: 100%; font-size: 14px; }
+th, td { padding: 7px 12px; text-align: left; border-bottom: 1px solid var(--border); white-space: nowrap; }
+th { font-weight: 600; background: var(--accent-soft); position: sticky; top: 0; }
+tbody tr:last-child td { border-bottom: none; }
+td { font-family: var(--mono); font-size: 13px; }
+td:first-child { font-family: var(--sans); font-weight: 600; }
+tr.diff td { background: var(--warn-soft); }
+tr.fail td { background: var(--fail-soft); }
+tr.fixed td { background: var(--ok-soft); }
+.legend { font-size: 13px; color: var(--muted); display: flex; gap: 16px; flex-wrap: wrap; margin-top: -6px; }
+.legend span::before { content: ""; display: inline-block; width: 11px; height: 11px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; border: 1px solid var(--border); }
+.legend .l-diff::before { background: var(--warn-soft); }
+.legend .l-fail::before { background: var(--fail-soft); }
+.legend .l-fixed::before { background: var(--ok-soft); }
+table.matrix { width: auto; font-size: 13px; margin: 6px auto 0; }
+table.matrix td { padding: 2px 8px; border: none; font-family: var(--mono); font-weight: 400; text-align: right; }
+.matrices { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin: 16px 0; }
+.matrices div { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 10px; text-align: center; font-weight: 600; }
+
+details { margin: 16px 0; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); }
+details > summary { cursor: pointer; padding: 12px 16px; font-weight: 600; }
+details > div { padding: 0 16px 16px; }
+details .gallery { margin-top: 0; }
+
+.compare-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 18px; margin: 20px 0; }
+.compare-frame { position: relative; line-height: 0; }
+.compare-frame img.after { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover;
+  clip-path: inset(0 0 0 var(--pos)); }
+.compare-frame::after { content: ""; position: absolute; top: 0; bottom: 0; left: var(--pos); width: 2px; background: #fff; box-shadow: 0 0 4px rgba(0,0,0,.5); pointer-events: none; }
+.compare-frame input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: ew-resize; margin: 0; }
+.tag { position: absolute; top: 8px; font: 600 11px/1 var(--sans); letter-spacing: .06em; text-transform: uppercase; color: #fff;
+  background: rgba(0,0,0,.55); padding: 5px 7px; border-radius: 4px; pointer-events: none; }
+.tag-l { left: 8px; } .tag-r { right: 8px; }
+.compare img:not(.after) { aspect-ratio: auto; }
+
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 14px; margin: 24px 0; }
+.stat { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; box-shadow: var(--shadow); }
+.stat .num { font: 600 28px/1.1 var(--serif); color: var(--accent); }
+.stat .lbl { font-size: 13px; color: var(--muted); margin-top: 4px; }
+
+footer { border-top: 1px solid var(--border); color: var(--muted); font-size: 14px; text-align: center; padding: 28px 16px; }
+
+@media (max-width: 1000px) {
+  .layout { grid-template-columns: minmax(0, 1fr); gap: 0; padding: 24px 16px 64px; }
+  nav.toc { display: none; }
+  .grid-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .pipeline { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 620px) {
+  .grid-2, .grid-3, .matrices { grid-template-columns: minmax(0, 1fr); }
+  .metric-card { --n: 2 !important; }
+  .hero { padding-top: 56px; }
+  h2 { font-size: 27px; }
+}
+.print-only, .print-img { display: none; }
+@page { margin: 12mm; }
+@media print {
+  /* Keep the table highlights and colored markers even when "Background graphics" is off */
+  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body { font-size: 10.5pt; background: #fff; color: #000; }
+  .hero { background: none; padding: 8px 0 20px; }
+  .hero .back, nav.toc, .compare-frame input { display: none; }
+  .print-only { display: inline; }
+  .print-img { display: block; }
+  .screen-only { display: none; }
+  .layout { display: block; padding: 0; }
+  h2 { margin-top: 36px; } h3 { margin-top: 28px; }
+  figure, .table-wrap, .callout, .stat, .metric-card { box-shadow: none; break-inside: avoid; }
+  h2, h3, h4 { break-after: avoid; }
+  /* The print width (~720 px) would otherwise trigger the narrow-screen layouts */
+  .pipeline { grid-template-columns: 0.55fr 1.4fr 0.8fr 0.8fr; }
+  .grid-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .compare-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+  /* Wide tables: show every column instead of a horizontal scrollbar */
+  .table-wrap { overflow: visible; }
+  th, td { padding: 3px 6px; font-size: 8.5pt; }
+  th { position: static; white-space: normal; }
+  .formula { white-space: pre-wrap; }
+  /* Before / after sliders become two images side by side, labelled */
+  .compare-frame img.after { position: static; clip-path: none; }
+  .compare-frame { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+  .compare-frame::after { display: none; }
+  a { color: inherit; text-decoration: none; }
+}
+</style>
 </head>
 <body>
-  <nav><a href="../">&larr; All assignments</a></nav>
-  <h1>Assignment 1</h1>
-  <p class="subtitle">SYDE 671</p>
 
-  <h2>Overview</h2>
-  <p>TODO</p>
-
-  <h2>Results</h2>
-  <div class="grid">
-    <!-- <figure><img src="results/example.jpg" alt=""><figcaption>Caption</figcaption></figure> -->
+<header class="hero">
+  <a class="back" href="../">&larr; All assignments</a>
+  <div class="kicker">SYDE 671 · Introduction to Computer Vision / Advance Image Processing</div>
+  <h1>Assignment 1: Becoming friends with the camera & Colorizing the Russian Empire</h1>
+  <div class="byline">Ashley Li</div>
+  <!-- <p>Part one explores perspective, focal length and the center of projection with a phone camera.
+     Part two turns Sergei Prokudin-Gorskii's 1900s glass-plate negatives into color photographs, automatically.</p> -->
+  <div class="hero-strip">
+    <span><img src="results/images/thumbs/own/full/ncc/00169a.jpg" alt=""></span>
+    <span><img src="results/images/thumbs/own/full/ncc/00170a.jpg" alt=""></span>
+    <span><img src="results/images/thumbs/own/full/ncc/00171u.jpg" alt=""></span>
+    <span><img src="results/images/thumbs/own/full/ncc/00212a.jpg" alt=""></span>
   </div>
+</header>
+
+<div class="layout">
+<nav class="toc" aria-label="Contents">
+  <b>Part 1 · Camera</b>
+  <a href="#selfie">Selfie: wrong vs. right</a>
+  <a href="#compression">Perspective compression</a>
+  <a href="#dolly">Dolly zoom</a>
+  <b>Part 2 · Colorizing</b>
+  <a href="#overview">Overview</a>
+  <a href="#metrics">Matching metrics</a>
+  <a href="#single">Single-scale alignment</a>
+  <a href="#pyramid">Multi-scale pyramid alignment</a>
+  <a href="#failure">Failure analysis</a>
+  <a href="#own">My choice of image</a>
+  <b>Bells &amp; whistles</b>
+  <a href="#b1">B1 · Edge features</a>
+  <a href="#b2">B2 · Auto-crop</a>
+  <a href="#b3">B3 · Auto-contrast</a>
+  <a href="#b4">B4 · White balance</a>
+  <a href="#b5">B5 · Color mapping</a>
+  <a href="#b6">B6 · Rotation &amp; scale</a>
+  <a href="#final">Final results</a>
+  <a href="#summary">Summary</a>
+</nav>
+
+<main>
+
+<!-- ================================================================ PART 1 -->
+<section id="part1">
+<h2><span class="part">Part one</span>Becoming friends with your camera</h2>
+<p class="lead">In a pinhole camera, an object at depth <i>Z</i> appears with an image size proportional to <i>f / Z</i>.
+Zooming changes <i>f</i> (the whole image scales equally); walking changes <i>Z</i>, and that changes the
+<em>relative</em> sizes of near and far things. That second effect is what we call perspective: it depends only on
+where the camera stands (the center of projection), not on the lens. All three experiments below play with this.</p>
+
+<h3 id="selfie">Selfie: the wrong way vs. the right way</h3>
+<div class="grid-2 pair">
+  <div>
+    <figure class=""><a href="results/images/part1/selfie_near.jpg" target="_blank" rel="noopener"><img src="results/images/thumbs/part1/selfie_near.jpg" alt="Close up, wide lens, 24 mm-equivalent, about arm's length away"></a><figcaption><b>Close up</b> wide lens, 24 mm-equivalent, about arm's length away</figcaption></figure>
+    <p><b>The wrong way.</b> The middle of the face (nose, mouth) looks exaggerated relative to the rest of the head. The background
+    looks far away and wide: the whole shelter roof fits in the frame and the bench looks small.</p>
+  </div>
+  <div>
+    <figure class=""><a href="results/images/part1/selfie_far.jpg" target="_blank" rel="noopener"><img src="results/images/thumbs/part1/selfie_far.jpg" alt="Stepped back and zoomed in, 100 mm-equivalent, face framed at the same size"></a><figcaption><b>Stepped back, zoomed in</b> 100 mm-equivalent, face framed at the same size</figcaption></figure>
+    <p><b>The right way.</b> The face looks flatter and more natural. The background seems pulled up close behind the head: the
+    bench, the "Platform" sign and the people walking by look much larger.</p>
+  </div>
+</div>
+<p><b>Why.</b> From arm's length, the nose is noticeably closer to the camera than the cheeks and ears, so its
+<i>f / Z</i> is noticeably larger and it is magnified more. From several metres away that depth difference is tiny compared with
+the distance, every part of the face is magnified almost equally, and the proportions look natural. So the telephoto lens isn't
+what fixes the face; standing farther away does, and zooming in only brings the face back to the same size in the frame.</p>
+
+<h3 id="compression">Architectural perspective compression</h3>
+<div class="grid-2 pair">
+  <div>
+    <figure class=""><a href="results/images/part1/street_zoom.jpg" target="_blank" rel="noopener"><img src="results/images/thumbs/part1/street_zoom.jpg" alt="From far away, zoomed in, 100 mm-equivalent"></a><figcaption><b>From far away, zoomed in</b> 100 mm-equivalent</figcaption></figure>
+    <p><b>Compressed.</b> The shelters, the road and the buildings at the end look stacked on top of each other: the buildings
+    loom right behind the shelters, and the scene looks flat.</p>
+  </div>
+  <div>
+    <figure class=""><a href="results/images/part1/street_nozoom.jpg" target="_blank" rel="noopener"><img src="results/images/thumbs/part1/street_nozoom.jpg" alt="Walked closer, no zoom, 28 mm-equivalent"></a><figcaption><b>Walked closer, no zoom</b> 28 mm-equivalent</figcaption></figure>
+    <p><b>Deep.</b> The nearby road and shelters look much bigger than the buildings, the row of shelters recedes steeply
+    into the distance, and the buildings look small and far away.</p>
+  </div>
+</div>
+<p><b>Why.</b> This is the selfie effect applied to a whole street. From far away, the near and far objects differ only a little
+in distance relative to how far the camera is, so they are magnified by similar amounts and the scene looks flat. After walking
+closer, the road and shelters are much closer than the buildings, so they are magnified much more. The "compression" is often
+blamed on the telephoto lens, but it comes from the camera position: from the same spot, a wide shot cropped to the same
+framing would look exactly as compressed. The long lens only lets me fill the frame from that far away.</p>
+
+<h3 id="dolly">The dolly zoom</h3>
+<div class="grid-2">
+  <figure><img class="screen-only" src="results/images/part1/dolly_zoom.gif" alt="Dolly zoom animation of a plush toy in a hallway">
+    <img class="print-img" src="results/images/thumbs/part1/dolly_zoom_frame1.jpg" alt="First frame of the dolly zoom">
+    <figcaption><b>Dolly zoom</b> 5 shots, about 200 ms each<span class="print-only"> (animated GIF: the printed version shows only the first frame)</span></figcaption></figure>
+  <div>
+    <p>The "Vertigo shot", named after Hitchcock's <i>Vertigo</i> (1958): move the camera while zooming the opposite way, so the
+    subject stays the same size. This is the <b>pull-out</b> version: the camera moves back while zooming in on the plush toy,
+    keeping <i>f / Z</i> of the toy constant.</p>
+    <p>The hallway behind it is farther away, so moving back changes its distance by a smaller fraction than the toy's, while the
+    zoom magnifies everything equally. Its <i>f / Z</i> therefore grows: the end of the hallway gets bigger and appears to rush
+    towards the toy, while the toy stays roughly the same size. It's the selfie and street experiments combined into one
+    continuous move.</p>
+  </div>
+</div>
+</section>
+
+<!-- ================================================================ PART 2 -->
+<section id="part2">
+<h2><span class="part">Part two</span>Colorizing the Prokudin-Gorskii collection</h2>
+<p class="lead">From about 1907, Sergei Prokudin-Gorskii photographed the Russian Empire by exposing each scene three times
+onto one glass plate, through a blue, a green and a red filter. The Library of Congress scanned the plates.
+The goal: take a scan and <em>automatically</em> produce a color image with as few artifacts as possible.</p>
+
+<div class="stats">
+  <div class="stat"><div class="num">18 / 18</div><div class="lbl">course plates aligned with NCC (L2: 17 / 18)</div></div>
+  <div class="stat"><div class="num">0.6 s</div><div class="lbl">slowest full-size plate, per metric (target: under 60 s)</div></div>
+  <div class="stat"><div class="num">≈ 10 s</div><div class="lbl">all 18 plates × 2 metrics</div></div>
+  <div class="stat"><div class="num">6</div><div class="lbl">bells &amp; whistles implemented</div></div>
+</div>
+
+<h3 id="overview">Overview: from glass plate to color image</h3>
+<ol class="steps">
+  <li><b>Load and convert.</b> Every scan is converted to 32-bit floats in [0, 1]. The course plates are 8-bit JPGs (÷ 255);
+      the TIFFs I downloaded are mostly 16-bit (÷ 65535), so all plates end up on the same scale.</li>
+  <li><b>Split.</b> The plate holds three exposures stacked top to bottom in the order B, G, R. It is divided into three
+      <em>equal</em> parts of <code>height // 3</code> rows (the 1–2 leftover rows are dropped so all three channels have the same shape).</li>
+  <li><b>Align.</b> G and R are each aligned to B by searching for the (x, y) shift that makes them match best.
+      The match is computed directly on the raw pixel values of each channel, with no gradient or edge features;
+      aligning on image gradients instead is tried later, in <a href="#b1">B1</a>.</li>
+  <li><b>Stack</b> the shifted R, G and B into one RGB image.</li>
+</ol>
+<div class="pipeline">
+  <figure class=""><a href="results/images/overview/plate.jpg" target="_blank" rel="noopener"><img src="results/images/thumbs/overview/plate.jpg" alt="<b>Plate</b> 01164v, 1024×396"></a><figcaption><b>Plate</b> 01164v, 1024×396</figcaption></figure>
+  <figure class="plain"><a href="results/images/overview/channels.jpg" target="_blank" rel="noopener"><img src="results/images/thumbs/overview/channels.jpg" alt="<b>Split</b> into three equal thirds"></a><figcaption><b>Split</b> into three equal thirds</figcaption></figure>
+  <figure class=""><a href="results/images/overview/unaligned.jpg" target="_blank" rel="noopener"><img src="results/images/thumbs/overview/unaligned.jpg" alt="<b>Stacked, unaligned</b> color fringes"></a><figcaption><b>Stacked, unaligned</b> color fringes</figcaption></figure>
+  <figure class=""><a href="results/images/overview/aligned.jpg" target="_blank" rel="noopener"><img src="results/images/thumbs/overview/aligned.jpg" alt="<b>Aligned</b> G (2, 6), R (3, 11)"></a><figcaption><b>Aligned</b> G (2, 6), R (3, 11)</figcaption></figure>
+</div>
+<p>The three exposures were taken one after another, so the camera and the plate moved slightly between them. Stacking
+without alignment gives strong red/green/blue fringes; the whole assignment is about finding the right shifts.
+Throughout, an offset <code>(dx, dy)</code> means "shift the channel <i>dx</i> pixels right and <i>dy</i> pixels down"
+(<code>np.roll</code>); every offset on this page is the shift applied to G or R to match B.</p>
+
+<h3 id="metrics">Matching metrics: L2 and NCC</h3>
+<p>To decide which shift is best, we need a score for how well two channels match. Two classic choices:</p>
+<div class="formula">L2 (Euclidean distance) = sqrt( Σ (image1 − image2)² )          lower is better
+NCC = ⟨ image1 / ‖image1‖ , image2 / ‖image2‖ ⟩                 higher is better (1 = identical up to scale)</div>
+<p><b>L2</b> compares raw brightness: it's zero only if the pixels are equal. <b>NCC</b> (normalized cross-correlation)
+treats each image as one long vector, scales both to length 1 and takes their dot product, so a channel that is a scaled copy
+of another (say, twice as bright everywhere) still matches perfectly. That matters here, because the three plates were exposed
+through different filters and differ in overall brightness.</p>
+<div class="callout">
+  <p><b>Ignore the borders.</b> The plates have black and white borders, scratches at the edges, and <code>np.roll</code> wraps pixels
+  from one side of the image to the other. All of that would dominate the score, so every metric is computed only on the
+  <b>interior</b>: 10% is trimmed from each side. The trim (≈ 34 px on a low-res plate) is larger than the search window, so wrapped pixels are never scored.</p>
+</div>
+<!-- <h4>Sanity check</h4>
+<p>I shifted the blue channel of 00056v by a known amount, (7, -4), then scored it after shifting back.
+Only the correct undo gives a perfect score (L2 = 0, NCC = 1); being off by a single pixel is already clearly worse:</p>
+<div class="table-wrap"><table class=""><thead><tr><th>Candidate shift</th><th>L2 distance</th><th>NCC</th><th>NCC (zero-mean)</th></tr></thead><tbody><tr><td>undo (correct)</td><td>0.00</td><td>1.0000</td><td>1.0000</td></tr><tr><td>no shift</td><td>52.45</td><td>0.9563</td><td>0.7175</td></tr><tr><td>off by 1 in x</td><td>25.84</td><td>0.9895</td><td>0.9317</td></tr><tr><td>off by 1 in y</td><td>27.41</td><td>0.9883</td><td>0.9234</td></tr></tbody></table></div> -->
+
+<h3 id="single">Single-scale alignment</h3>
+<p>The simplest search: try every shift in a window, score each one, keep the best.</p>
+<ol class="steps">
+  <li>For every <code>dx</code> and <code>dy</code> in [−20, 20] (that's 1681 candidates), shift the channel with <code>np.roll</code>.</li>
+  <li>Score the interior of the shifted channel against the interior of B, with L2 or NCC.</li>
+  <li>Keep the shift with the best score. The interior of B is cropped once, outside the loops.</li>
+</ol>
+<p>This runs in about 0.15 s per low-resolution plate and metric, G and R together (341 × 387–400 px per channel).</p>
+<div class="callout">
+  <p><b>Why a ±20 window and not ±15?</b> The assignment suggests [−15, 15]. With ±15, three plates
+  (01597v, 01598v, 01728v) came back with R at exactly <code>dy = 15</code>, the edge of the window: a sign that the true
+  shift was outside the search range. Widening to ±20 found dy = 16, 16 and 18 with NCC (L2 gives 17 for 01598v). One fixed window is used for every image.</p>
+</div>
+<div class="wide"><figure class="plain"><a href="results/images/single/window_demo.jpg" target="_blank" rel="noopener"><img src="results/images/thumbs/single/window_demo.jpg" alt="<b>01728v</b> center crop. With ±15 the best shift is clipped and red/cyan fringes remain; with ±20 the plate is sharp."></a><figcaption><b>01728v</b> center crop. With ±15 the best shift is clipped and red/cyan fringes remain; with ±20 the plate is sharp.</figcaption></figure></div>
+
+<h4>Results: single-scale, L2 vs. NCC</h4>
+<!-- generated:single_gallery start (report.py) -->
+<div class="metric-grid"><figure class="metric-card" style="--n: 2"><div class="metric-pair"><a href="results/images/single/l2/00056v.jpg" target="_blank" rel="noopener"><img src="results/images/thumbs/single/l2/00056v.jpg" alt="00056v, L2"><span class="tag tag-l">L2</span></a><a href="results/images/single/ncc/00056v.jpg" target="_blank" rel="noopener"><img src="results/images/thumbs/single/ncc/00056v.jpg" alt="00056v, NCC"><span class="tag tag-l">NCC</span></a></div><figcaption><b>00056v</b><span class="mono">G (1, 6) · R (1, 13)</span><span class="mono">G (1, 6) · R (1, 13)</span></figcaption></figure><figure class="metric-card" style="--n: 2"><div class="metric-pair"><a href="results/images/single/l2/00125v.jpg" target="_blank" rel="noopener"><img src="results/images/thumbs/single/l2/00125v.jpg" alt="00125v, L2"><span class="tag tag-l">L2</span></a><a href="results/images/single/ncc/00125v.jpg" target="_blank" rel="noopener"><img src="results/images/thumbs/single/ncc/00125v.jpg" alt="00125v, NCC"><span class="tag tag-l">NCC</span></a></div><figcaption><b>00125v</b><span class="mono">G (2, 5) · R (1, 10)</span><span class="mono">G (2, 5) · R (1, 10)</span></figcaption></figure><figure class="metric-card" style="--n: 2"><div class="metric-pair"><a href="results/images/single/l2/00163v.jpg" target="_blank" rel="noopener"><img src="results/images/thumbs/single/l2/00163v.jpg" alt="00163v, L2"><span class="tag tag-l">L2</span></a><a href="results/images/single/ncc/00163v.jpg" target="_blank" rel="noopener"><img src="results/images/thumbs/single/ncc/00163v.jpg" alt="00163v, NCC"><span class="tag tag-l">NCC</span></a></div><figcaption><b>00163v</b><span class="mono">G (1, -3) · R (1, -4)</span><span class="mono">G (1, -3) · R (1, -4)</span></figcaption></figure><figure class="metric-card" style="--n: 2"><div class="metric-pair"><a href="results/images/single/l2/00804v.jpg" target="_blank" rel="noopener"><img src="results/images/thumbs/single/l2/00804v.jpg" alt="00804v, L2"><span class="tag tag-l">L2</span></a><a href="results/images/single/ncc/00804v.jpg" target="_blank" rel="noopener"><img src="results/images/thumbs/single/ncc/00804v.jpg" alt="00804v, NCC"><span class="tag tag-l">NCC</span></a></div><figcaption><b>00804v</b><span class="mono">G (-2, 6) · R (-4, 13)</span><span class="mono">G (-2, 6) · R (-4, 13)</span></figcaption></figure><figure class="metric-card" style="--n: 2"><div class="metric-pair"><a href="results/images/single/l2/01164v.jpg" target="_blank" rel="noopener"><img src="results/images/thumbs/single/l2/01164v.jpg" alt="01164v, L2"><span class="tag tag-l">L2</span></a><a href="results/images/single/ncc/01164v.jpg" target="_blank" rel="noopener"><img src="results/images/thumbs/single/ncc/01164v.jpg" alt="01164v, NCC"><span class="tag tag-l">NCC</span></a></div><figcaption><b>01164v</b><span class="mono">G (2, 6) · R (3, 11)</span><span class="mono">G (2, 6) · R (3, 11)</span></figcaption></figure><figure class="metric-card diff" style="--n: 2"><div class="metric-pair"><a href="results/images/single/l2/01269v.jpg" target="_blank" rel="noopener"><img src="results/images/thumbs/single/l2/01269v.jpg" alt="01269v, L2"><span class="tag tag-l">L2</span></a><a href="results/images/single/ncc/01269v.jpg" target="_blank" rel="noopener"><img src="results/images/thumbs/single/ncc/01269v.jpg" alt="01269v, NCC"><span class="tag tag-l">NCC</span></a></div><figcaption><b>01269v</b><span class="mono">G (2, 6) · R (3, 14)</span><span class="mono">G (2, 6) · R (3, 13)</span></figcaption></figure><figure class="metric-card diff" style="--n: 2"><div class="metric-pair"><a href="results/images/single/l2/01522v.jpg" target="_blank" rel="noopener"><img src="results/images/thumbs/single/l2/01522v.jpg" alt="01522v, L2"><span class="tag tag-l">L2</span></a><a href="results/images/single/ncc/01522v.jpg" target="_blank" rel="noopener"><img src="results/images/thumbs/single/ncc/01522v.jpg" alt="01522v, NCC"><span class="tag tag-l">NCC</span></a></div><figcaption><b>01522v</b><span class="mono">G (2, 6) · R (1, 13)</span><span class="mono">G (2, 6) · R (2, 13)</span></figcaption></figure><figure class="metric-card" style="--n: 2"><div class="metric-pair"><a href="results/images/single/l2/01597v.jpg" target="_blank" rel="noopener"><img src="results/images/thumbs/single/l2/01597v.jpg" alt="01597v, L2"><span class="tag tag-l">L2</span></a><a href="results/images/single/ncc/01597v.jpg" target="_blank" rel="noopener"><img src="results/images/thumbs/single/ncc/01597v.jpg" alt="01597v, NCC"><span class="tag tag-l">NCC</span></a></div><figcaption><b>01597v</b><span class="mono">G (1, 7) · R (1, 16)</span><span class="mono">G (1, 7) · R (1, 16)</span></figcaption></figure><figure class="metric-card diff" style="--n: 2"><div class="metric-pair"><a href="results/images/single/l2/01598v.jpg" target="_blank" rel="noopener"><img src="results/images/thumbs/single/l2/01598v.jpg" alt="01598v, L2"><span class="tag tag-l">L2</span></a><a href="results/images/single/ncc/01598v.jpg" target="_blank" rel="noopener"><img src="results/images/thumbs/single/ncc/01598v.jpg" alt="01598v, NCC"><span class="tag tag-l">NCC</span></a></div><figcaption><b>01598v</b><span class="mono">G (0, 8) · R (-1, 17)</span><span class="mono">G (0, 8) · R (-1, 16)</span></figcaption></figure><figure class="metric-card" style="--n: 2"><div class="metric-pair"><a href="results/images/single/l2/01728v.jpg" target="_blank" rel="noopener"><img src="results/images/thumbs/single/l2/01728v.jpg" alt="01728v, L2"><span class="tag tag-l">L2</span></a><a href="results/images/single/ncc/01728v.jpg" target="_blank" rel="noopener"><img src="results/images/thumbs/single/ncc/01728v.jpg" alt="01728v, NCC"><span class="tag tag-l">NCC</span></a></div><figcaption><b>01728v</b><span class="mono">G (1, 8) · R (1, 18)</span><span class="mono">G (1, 8) · R (1, 18)</span></figcaption></figure><figure class="metric-card" style="--n: 2"><div class="metric-pair"><a href="results/images/single/l2/10131v.jpg" target="_blank" rel="noopener"><img src="results/images/thumbs/single/l2/10131v.jpg" alt="10131v, L2"><span class="tag tag-l">L2</span></a><a href="results/images/single/ncc/10131v.jpg" target="_blank" rel="noopener"><img src="results/images/thumbs/single/ncc/10131v.jpg" alt="10131v, NCC"><span class="tag tag-l">NCC</span></a></div><figcaption><b>10131v</b><span class="mono">G (2, 6) · R (3, 12)</span><span class="mono">G (2, 6) · R (3, 12)</span></figcaption></figure><figure class="metric-card" style="--n: 2"><div class="metric-pair"><a href="results/images/single/l2/31421v.jpg" target="_blank" rel="noopener"><img src="results/images/thumbs/single/l2/31421v.jpg" alt="31421v, L2"><span class="tag tag-l">L2</span></a><a href="results/images/single/ncc/31421v.jpg" target="_blank" rel="noopener"><img src="results/images/thumbs/single/ncc/31421v.jpg" alt="31421v, NCC"><span class="tag tag-l">NCC</span></a></div><figcaption><b>31421v</b><span class="mono">G (0, 8) · R (0, 13)</span><span class="mono">G (0, 8) · R (0, 13)</span></figcaption></figure></div>
+<!-- generated:single_gallery end -->
+<div class="table-wrap"><table class=""><thead><tr><th>Plate</th><th>G (L2)</th><th>R (L2)</th><th>G (NCC)</th><th>R (NCC)</th></tr></thead><tbody><tr class=""><td>00056v</td><td>(1, 6)</td><td>(1, 13)</td><td>(1, 6)</td><td>(1, 13)</td></tr><tr class=""><td>00125v</td><td>(2, 5)</td><td>(1, 10)</td><td>(2, 5)</td><td>(1, 10)</td></tr><tr class=""><td>00163v</td><td>(1, -3)</td><td>(1, -4)</td><td>(1, -3)</td><td>(1, -4)</td></tr><tr class=""><td>00804v</td><td>(-2, 6)</td><td>(-4, 13)</td><td>(-2, 6)</td><td>(-4, 13)</td></tr><tr class=""><td>01164v</td><td>(2, 6)</td><td>(3, 11)</td><td>(2, 6)</td><td>(3, 11)</td></tr><tr class="diff"><td>01269v</td><td>(2, 6)</td><td>(3, 14)</td><td>(2, 6)</td><td>(3, 13)</td></tr><tr class="diff"><td>01522v</td><td>(2, 6)</td><td>(1, 13)</td><td>(2, 6)</td><td>(2, 13)</td></tr><tr class=""><td>01597v</td><td>(1, 7)</td><td>(1, 16)</td><td>(1, 7)</td><td>(1, 16)</td></tr><tr class="diff"><td>01598v</td><td>(0, 8)</td><td>(-1, 17)</td><td>(0, 8)</td><td>(-1, 16)</td></tr><tr class=""><td>01728v</td><td>(1, 8)</td><td>(1, 18)</td><td>(1, 8)</td><td>(1, 18)</td></tr><tr class=""><td>10131v</td><td>(2, 6)</td><td>(3, 12)</td><td>(2, 6)</td><td>(3, 12)</td></tr><tr class=""><td>31421v</td><td>(0, 8)</td><td>(0, 13)</td><td>(0, 8)</td><td>(0, 13)</td></tr></tbody></table></div>
+<div class="legend"><span class="l-diff">L2 and NCC differ (by 1 px here)</span></div>
+<p>All 12 low-resolution plates align cleanly with both metrics. L2 and NCC agree exactly on 9 of 12; on the other
+three they differ by one pixel in R, which isn't visible.</p>
+
+<h3 id="pyramid">Multi-scale image pyramid: coarse-to-fine alignment</h3>
+<p>The full-size scans are about 3,200 × 3,700 pixels per channel, and the shifts reach 161 px. An exhaustive search over
+±160 px would be 103,041 candidates, each on a 12-megapixel image: far too slow. The fix is an <b>image pyramid</b>: the
+same image at several resolutions, each half the size of the previous one.</p>
+
+<h4>Downsampling, done properly</h4>
+<p>Halving an image by keeping every other pixel (<code>im[::2, ::2]</code>) causes <b>aliasing</b>: detail finer than the new pixel
+size folds into false jagged patterns. The fix is to blur first, so that only detail the smaller image can represent is kept.
+I compared two blurs: a 2×2 block average, and a Gaussian blur (σ = 1, separable 1-D kernel) followed by subsampling.
+Both gave identical alignments on all 18 plates with both metrics; I kept the <b>Gaussian</b> because it removes aliasing best
+and it's the standard Gaussian pyramid I will reuse in the next assignment. The pyramid itself is my own code (the 5-tap Gaussian
+kernel, blur, subsampling and the level loop); the only library call is <code>scipy.ndimage.convolve1d</code>, which applies the
+1-D kernel along the rows and then the columns.</p>
+<div class="wide"><figure class="plain"><a href="results/images/pyramid/downsampling.jpg" target="_blank" rel="noopener"><img src="results/images/thumbs/pyramid/downsampling.jpg" alt="<b>Same patch after three halvings (1/8 size)</b> naive subsampling is grainy and jagged; the block average is better; the Gaussian is smoothest."></a><figcaption><b>Same patch after three halvings (1/8 size)</b> naive subsampling is grainy and jagged; the block average is better; the Gaussian is smoothest.</figcaption></figure></div>
+<div class="wide"><figure class="plain"><a href="results/images/pyramid/levels.jpg" target="_blank" rel="noopener"><img src="results/images/thumbs/pyramid/levels.jpg" alt="<b>Gaussian pyramid of 01007a's blue channel</b> each level is half the size of the previous one."></a><figcaption><b>Gaussian pyramid of 01007a's blue channel</b> each level is half the size of the previous one.</figcaption></figure></div>
+
+<h4>The coarse-to-fine search</h4>
+<ol class="steps">
+  <li>Build a pyramid for the channel and for B, halving until the smaller side is at most 400 px
+      (a full-size plate gets 5 levels, from ≈ 3,200 px down to ≈ 200 px). The stopping size is tied to the search window:
+      at the coarsest level (≈ 200 px), the 10% border trim is ≈ 20 px, at least the ±20 window, so pixels wrapped around
+      by <code>np.roll</code> are never scored at any level (the code checks this with an assertion).</li>
+  <li>At the <b>coarsest</b> level, run the exhaustive single-scale search with a ±20 window (1,681 candidates), scored with
+      L2 or NCC on the interior exactly as in the single-scale version. At 1/16 size, that covers ±320 px of the full image,
+      for the cost of searching a tiny image.</li>
+  <li>Go up one level: <b>double</b> the shift (the image is twice as big), apply it with <code>np.roll</code>, and refine it
+      with a small ±2 search (25 candidates). A shift found to the nearest pixel is off by at most ±0.5 px; doubling makes that
+      ±1 px, and the blur and subsampling can add about one more pixel, so ±2 covers the error.</li>
+  <li>Repeat until full resolution. The result is the full-resolution shift.</li>
+</ol>
+<p><b>Why it is fast.</b> On 01007a the pyramid scores 1,681 + 4 × 25 = 1,781 candidate shifts, most of them on a
+203 × 238 image. An exhaustive ±160 search at full resolution would score 103,041 shifts on the 3,238 × 3,800 image: about
+2,600 times more pixel work. The loop over shifts is a plain Python <code>for</code> loop, as the assignment asks for the
+single-scale version, but each score is a single vectorized NumPy operation over the whole interior.</p>
+<p><b>L2 vs. NCC inside the pyramid.</b> Both metrics go through exactly the same steps. The difference matters at the coarsest
+level: it is the only wide search, and everything after it only refines by ±2 px. On most plates L2 and NCC pick the same
+coarse shift and end within 1 px of each other. On 01725u they don't: L2's coarse pick is wrong by a small margin, and the
+pyramid can only double that mistake (see the <a href="#failure">failure analysis</a>).</p>
+<p>Here is the estimate at every level for 01007a: each is roughly twice the previous one plus a small correction.</p>
+<div class="table-wrap"><table class=""><thead><tr><th>Level size</th><th>G offset</th><th>R offset</th></tr></thead><tbody><tr><td>203 × 238</td><td>(1, 4)</td><td>(1, 8)</td></tr><tr><td>405 × 475</td><td>(2, 7)</td><td>(2, 16)</td></tr><tr><td>810 × 950</td><td>(3, 15)</td><td>(3, 32)</td></tr><tr><td>1619 × 1900</td><td>(7, 30)</td><td>(6, 64)</td></tr><tr><td>3238 × 3800</td><td>(14, 60)</td><td>(13, 129)</td></tr></tbody></table></div>
+<!-- <p>To check the implementation, I also forced a 2-level pyramid on the 12 low-res plates and compared it with the
+single-scale search: <b>identical offsets on all 12</b>.</p>
+<details><summary>Show the pyramid vs. single-scale check</summary><div>
+<div class="table-wrap"><table class=""><thead><tr><th>Plate</th><th>G single</th><th>G pyramid</th><th>R single</th><th>R pyramid</th><th>diff (px)</th></tr></thead><tbody><tr><td>00056v</td><td>(1, 6)</td><td>(1, 6)</td><td>(1, 13)</td><td>(1, 13)</td><td>0</td></tr><tr><td>00125v</td><td>(2, 5)</td><td>(2, 5)</td><td>(1, 10)</td><td>(1, 10)</td><td>0</td></tr><tr><td>00163v</td><td>(1, -3)</td><td>(1, -3)</td><td>(1, -4)</td><td>(1, -4)</td><td>0</td></tr><tr><td>00804v</td><td>(-2, 6)</td><td>(-2, 6)</td><td>(-4, 13)</td><td>(-4, 13)</td><td>0</td></tr><tr><td>01164v</td><td>(2, 6)</td><td>(2, 6)</td><td>(3, 11)</td><td>(3, 11)</td><td>0</td></tr><tr><td>01269v</td><td>(2, 6)</td><td>(2, 6)</td><td>(3, 13)</td><td>(3, 13)</td><td>0</td></tr><tr><td>01522v</td><td>(2, 6)</td><td>(2, 6)</td><td>(2, 13)</td><td>(2, 13)</td><td>0</td></tr><tr><td>01597v</td><td>(1, 7)</td><td>(1, 7)</td><td>(1, 16)</td><td>(1, 16)</td><td>0</td></tr><tr><td>01598v</td><td>(0, 8)</td><td>(0, 8)</td><td>(-1, 16)</td><td>(-1, 16)</td><td>0</td></tr><tr><td>01728v</td><td>(1, 8)</td><td>(1, 8)</td><td>(1, 18)</td><td>(1, 18)</td><td>0</td></tr><tr><td>10131v</td><td>(2, 6)</td><td>(2, 6)</td><td>(3, 12)</td><td>(3, 12)</td><td>0</td></tr><tr><td>31421v</td><td>(0, 8)</td><td>(0, 8)</td><td>(0, 13)</td><td>(0, 13)</td><td>0</td></tr></tbody></table></div></div></details> -->
+
+<h4 id="all">Results: all 18 plates, L2 vs. NCC</h4>
+<p>One fixed set of parameters for every plate. The 12 low-res plates are only 341 px tall per channel, already below the
+400 px stopping size, so their pyramid has a <b>single level</b>: for them the result is the same ±20 search as the single-scale
+version. The pyramid does its real work on the 6 full-size plates, with 5 levels each. The slowest plate takes about 0.6 s per
+metric; all 18 plates with both metrics take about 10 s in total.</p>
+<!-- generated:pyramid_gallery start (report.py) -->
+<div class="metric-grid"><figure class="metric-card" style="--n: 2"><div class="metric-pair"><a href="results/images/pyramid/l2/01007a.jpg" target="_blank" rel="noopener"><img src="results/images/thumbs/pyramid/l2/01007a.jpg" alt="01007a, L2"><span class="tag tag-l">L2</span></a><a href="results/images/pyramid/ncc/01007a.jpg" target="_blank" rel="noopener"><img src="results/images/thumbs/pyramid/ncc/01007a.jpg" alt="01007a, NCC"><span class="tag tag-l">NCC</span></a></div><figcaption><b>01007a</b><span class="mono">G (14, 60) · R (13, 129)</span><span class="mono">G (14, 60) · R (13, 129)</span></figcaption></figure><figure class="metric-card diff" style="--n: 2"><div class="metric-pair"><a href="results/images/pyramid/l2/01861a.jpg" target="_blank" rel="noopener"><img src="results/images/thumbs/pyramid/l2/01861a.jpg" alt="01861a, L2"><span class="tag tag-l">L2</span></a><a href="results/images/pyramid/ncc/01861a.jpg" target="_blank" rel="noopener"><img src="results/images/thumbs/pyramid/ncc/01861a.jpg" alt="01861a, NCC"><span class="tag tag-l">NCC</span></a></div><figcaption><b>01861a</b><span class="mono">G (38, 71) · R (62, 148)</span><span class="mono">G (39, 71) · R (63, 148)</span></figcaption></figure><figure class="metric-card" style="--n: 2"><div class="metric-pair"><a href="results/images/pyramid/l2/00458u.jpg" target="_blank" rel="noopener"><img src="results/images/thumbs/pyramid/l2/00458u.jpg" alt="00458u, L2"><span class="tag tag-l">L2</span></a><a href="results/images/pyramid/ncc/00458u.jpg" target="_blank" rel="noopener"><img src="results/images/thumbs/pyramid/ncc/00458u.jpg" alt="00458u, NCC"><span class="tag tag-l">NCC</span></a></div><figcaption><b>00458u</b><span class="mono">G (6, 43) · R (32, 87)</span><span class="mono">G (6, 43) · R (32, 87)</span></figcaption></figure><figure class="metric-card" style="--n: 2"><div class="metric-pair"><a href="results/images/pyramid/l2/01047u.jpg" target="_blank" rel="noopener"><img src="results/images/thumbs/pyramid/l2/01047u.jpg" alt="01047u, L2"><span class="tag tag-l">L2</span></a><a href="results/images/pyramid/ncc/01047u.jpg" target="_blank" rel="noopener"><img src="results/images/thumbs/pyramid/ncc/01047u.jpg" alt="01047u, NCC"><span class="tag tag-l">NCC</span></a></div><figcaption><b>01047u</b><span class="mono">G (20, 24) · R (33, 71)</span><span class="mono">G (20, 24) · R (33, 71)</span></figcaption></figure><figure class="metric-card diff" style="--n: 2"><div class="metric-pair"><a href="results/images/pyramid/l2/01657u.jpg" target="_blank" rel="noopener"><img src="results/images/thumbs/pyramid/l2/01657u.jpg" alt="01657u, L2"><span class="tag tag-l">L2</span></a><a href="results/images/pyramid/ncc/01657u.jpg" target="_blank" rel="noopener"><img src="results/images/thumbs/pyramid/ncc/01657u.jpg" alt="01657u, NCC"><span class="tag tag-l">NCC</span></a></div><figcaption><b>01657u</b><span class="mono">G (8, 56) · R (11, 116)</span><span class="mono">G (8, 55) · R (11, 117)</span></figcaption></figure><figure class="metric-card fail" style="--n: 2"><div class="metric-pair"><a href="results/images/pyramid/l2/01725u.jpg" target="_blank" rel="noopener"><img src="results/images/thumbs/pyramid/l2/01725u.jpg" alt="01725u, L2"><span class="tag tag-l">L2</span></a><a href="results/images/pyramid/ncc/01725u.jpg" target="_blank" rel="noopener"><img src="results/images/thumbs/pyramid/ncc/01725u.jpg" alt="01725u, NCC"><span class="tag tag-l">NCC</span></a></div><figcaption><b>01725u</b><span class="mono">G (44, 77) · R (-275, 323)</span><span class="mono">G (44, 77) · R (77, 161)</span></figcaption></figure><figure class="metric-card" style="--n: 2"><div class="metric-pair"><a href="results/images/pyramid/l2/00056v.jpg" target="_blank" rel="noopener"><img src="results/images/thumbs/pyramid/l2/00056v.jpg" alt="00056v, L2"><span class="tag tag-l">L2</span></a><a href="results/images/pyramid/ncc/00056v.jpg" target="_blank" rel="noopener"><img src="results/images/thumbs/pyramid/ncc/00056v.jpg" alt="00056v, NCC"><span class="tag tag-l">NCC</span></a></div><figcaption><b>00056v</b><span class="mono">G (1, 6) · R (1, 13)</span><span class="mono">G (1, 6) · R (1, 13)</span></figcaption></figure><figure class="metric-card" style="--n: 2"><div class="metric-pair"><a href="results/images/pyramid/l2/00125v.jpg" target="_blank" rel="noopener"><img src="results/images/thumbs/pyramid/l2/00125v.jpg" alt="00125v, L2"><span class="tag tag-l">L2</span></a><a href="results/images/pyramid/ncc/00125v.jpg" target="_blank" rel="noopener"><img src="results/images/thumbs/pyramid/ncc/00125v.jpg" alt="00125v, NCC"><span class="tag tag-l">NCC</span></a></div><figcaption><b>00125v</b><span class="mono">G (2, 5) · R (1, 10)</span><span class="mono">G (2, 5) · R (1, 10)</span></figcaption></figure><figure class="metric-card" style="--n: 2"><div class="metric-pair"><a href="results/images/pyramid/l2/00163v.jpg" target="_blank" rel="noopener"><img src="results/images/thumbs/pyramid/l2/00163v.jpg" alt="00163v, L2"><span class="tag tag-l">L2</span></a><a href="results/images/pyramid/ncc/00163v.jpg" target="_blank" rel="noopener"><img src="results/images/thumbs/pyramid/ncc/00163v.jpg" alt="00163v, NCC"><span class="tag tag-l">NCC</span></a></div><figcaption><b>00163v</b><span class="mono">G (1, -3) · R (1, -4)</span><span class="mono">G (1, -3) · R (1, -4)</span></figcaption></figure><figure class="metric-card" style="--n: 2"><div class="metric-pair"><a href="results/images/pyramid/l2/00804v.jpg" target="_blank" rel="noopener"><img src="results/images/thumbs/pyramid/l2/00804v.jpg" alt="00804v, L2"><span class="tag tag-l">L2</span></a><a href="results/images/pyramid/ncc/00804v.jpg" target="_blank" rel="noopener"><img src="results/images/thumbs/pyramid/ncc/00804v.jpg" alt="00804v, NCC"><span class="tag tag-l">NCC</span></a></div><figcaption><b>00804v</b><span class="mono">G (-2, 6) · R (-4, 13)</span><span class="mono">G (-2, 6) · R (-4, 13)</span></figcaption></figure><figure class="metric-card" style="--n: 2"><div class="metric-pair"><a href="results/images/pyramid/l2/01164v.jpg" target="_blank" rel="noopener"><img src="results/images/thumbs/pyramid/l2/01164v.jpg" alt="01164v, L2"><span class="tag tag-l">L2</span></a><a href="results/images/pyramid/ncc/01164v.jpg" target="_blank" rel="noopener"><img src="results/images/thumbs/pyramid/ncc/01164v.jpg" alt="01164v, NCC"><span class="tag tag-l">NCC</span></a></div><figcaption><b>01164v</b><span class="mono">G (2, 6) · R (3, 11)</span><span class="mono">G (2, 6) · R (3, 11)</span></figcaption></figure><figure class="metric-card diff" style="--n: 2"><div class="metric-pair"><a href="results/images/pyramid/l2/01269v.jpg" target="_blank" rel="noopener"><img src="results/images/thumbs/pyramid/l2/01269v.jpg" alt="01269v, L2"><span class="tag tag-l">L2</span></a><a href="results/images/pyramid/ncc/01269v.jpg" target="_blank" rel="noopener"><img src="results/images/thumbs/pyramid/ncc/01269v.jpg" alt="01269v, NCC"><span class="tag tag-l">NCC</span></a></div><figcaption><b>01269v</b><span class="mono">G (2, 6) · R (3, 14)</span><span class="mono">G (2, 6) · R (3, 13)</span></figcaption></figure><figure class="metric-card diff" style="--n: 2"><div class="metric-pair"><a href="results/images/pyramid/l2/01522v.jpg" target="_blank" rel="noopener"><img src="results/images/thumbs/pyramid/l2/01522v.jpg" alt="01522v, L2"><span class="tag tag-l">L2</span></a><a href="results/images/pyramid/ncc/01522v.jpg" target="_blank" rel="noopener"><img src="results/images/thumbs/pyramid/ncc/01522v.jpg" alt="01522v, NCC"><span class="tag tag-l">NCC</span></a></div><figcaption><b>01522v</b><span class="mono">G (2, 6) · R (1, 13)</span><span class="mono">G (2, 6) · R (2, 13)</span></figcaption></figure><figure class="metric-card" style="--n: 2"><div class="metric-pair"><a href="results/images/pyramid/l2/01597v.jpg" target="_blank" rel="noopener"><img src="results/images/thumbs/pyramid/l2/01597v.jpg" alt="01597v, L2"><span class="tag tag-l">L2</span></a><a href="results/images/pyramid/ncc/01597v.jpg" target="_blank" rel="noopener"><img src="results/images/thumbs/pyramid/ncc/01597v.jpg" alt="01597v, NCC"><span class="tag tag-l">NCC</span></a></div><figcaption><b>01597v</b><span class="mono">G (1, 7) · R (1, 16)</span><span class="mono">G (1, 7) · R (1, 16)</span></figcaption></figure><figure class="metric-card diff" style="--n: 2"><div class="metric-pair"><a href="results/images/pyramid/l2/01598v.jpg" target="_blank" rel="noopener"><img src="results/images/thumbs/pyramid/l2/01598v.jpg" alt="01598v, L2"><span class="tag tag-l">L2</span></a><a href="results/images/pyramid/ncc/01598v.jpg" target="_blank" rel="noopener"><img src="results/images/thumbs/pyramid/ncc/01598v.jpg" alt="01598v, NCC"><span class="tag tag-l">NCC</span></a></div><figcaption><b>01598v</b><span class="mono">G (0, 8) · R (-1, 17)</span><span class="mono">G (0, 8) · R (-1, 16)</span></figcaption></figure><figure class="metric-card" style="--n: 2"><div class="metric-pair"><a href="results/images/pyramid/l2/01728v.jpg" target="_blank" rel="noopener"><img src="results/images/thumbs/pyramid/l2/01728v.jpg" alt="01728v, L2"><span class="tag tag-l">L2</span></a><a href="results/images/pyramid/ncc/01728v.jpg" target="_blank" rel="noopener"><img src="results/images/thumbs/pyramid/ncc/01728v.jpg" alt="01728v, NCC"><span class="tag tag-l">NCC</span></a></div><figcaption><b>01728v</b><span class="mono">G (1, 8) · R (1, 18)</span><span class="mono">G (1, 8) · R (1, 18)</span></figcaption></figure><figure class="metric-card" style="--n: 2"><div class="metric-pair"><a href="results/images/pyramid/l2/10131v.jpg" target="_blank" rel="noopener"><img src="results/images/thumbs/pyramid/l2/10131v.jpg" alt="10131v, L2"><span class="tag tag-l">L2</span></a><a href="results/images/pyramid/ncc/10131v.jpg" target="_blank" rel="noopener"><img src="results/images/thumbs/pyramid/ncc/10131v.jpg" alt="10131v, NCC"><span class="tag tag-l">NCC</span></a></div><figcaption><b>10131v</b><span class="mono">G (2, 6) · R (3, 12)</span><span class="mono">G (2, 6) · R (3, 12)</span></figcaption></figure><figure class="metric-card" style="--n: 2"><div class="metric-pair"><a href="results/images/pyramid/l2/31421v.jpg" target="_blank" rel="noopener"><img src="results/images/thumbs/pyramid/l2/31421v.jpg" alt="31421v, L2"><span class="tag tag-l">L2</span></a><a href="results/images/pyramid/ncc/31421v.jpg" target="_blank" rel="noopener"><img src="results/images/thumbs/pyramid/ncc/31421v.jpg" alt="31421v, NCC"><span class="tag tag-l">NCC</span></a></div><figcaption><b>31421v</b><span class="mono">G (0, 8) · R (0, 13)</span><span class="mono">G (0, 8) · R (0, 13)</span></figcaption></figure></div>
+<!-- generated:pyramid_gallery end -->
+<h4>Offsets</h4>
+<div class="table-wrap"><table class=""><thead><tr><th>Plate</th><th>type</th><th>G (L2)</th><th>R (L2)</th><th>G (NCC)</th><th>R (NCC)</th></tr></thead><tbody><tr class=""><td>01007a</td><td>a</td><td>(14, 60)</td><td>(13, 129)</td><td>(14, 60)</td><td>(13, 129)</td></tr><tr class="diff"><td>01861a</td><td>a</td><td>(38, 71)</td><td>(62, 148)</td><td>(39, 71)</td><td>(63, 148)</td></tr><tr class=""><td>00458u</td><td>u</td><td>(6, 43)</td><td>(32, 87)</td><td>(6, 43)</td><td>(32, 87)</td></tr><tr class=""><td>01047u</td><td>u</td><td>(20, 24)</td><td>(33, 71)</td><td>(20, 24)</td><td>(33, 71)</td></tr><tr class="diff"><td>01657u</td><td>u</td><td>(8, 56)</td><td>(11, 116)</td><td>(8, 55)</td><td>(11, 117)</td></tr><tr class="fail"><td>01725u</td><td>u</td><td>(44, 77)</td><td>(-275, 323)</td><td>(44, 77)</td><td>(77, 161)</td></tr><tr class=""><td>00056v</td><td>v</td><td>(1, 6)</td><td>(1, 13)</td><td>(1, 6)</td><td>(1, 13)</td></tr><tr class=""><td>00125v</td><td>v</td><td>(2, 5)</td><td>(1, 10)</td><td>(2, 5)</td><td>(1, 10)</td></tr><tr class=""><td>00163v</td><td>v</td><td>(1, -3)</td><td>(1, -4)</td><td>(1, -3)</td><td>(1, -4)</td></tr><tr class=""><td>00804v</td><td>v</td><td>(-2, 6)</td><td>(-4, 13)</td><td>(-2, 6)</td><td>(-4, 13)</td></tr><tr class=""><td>01164v</td><td>v</td><td>(2, 6)</td><td>(3, 11)</td><td>(2, 6)</td><td>(3, 11)</td></tr><tr class="diff"><td>01269v</td><td>v</td><td>(2, 6)</td><td>(3, 14)</td><td>(2, 6)</td><td>(3, 13)</td></tr><tr class="diff"><td>01522v</td><td>v</td><td>(2, 6)</td><td>(1, 13)</td><td>(2, 6)</td><td>(2, 13)</td></tr><tr class=""><td>01597v</td><td>v</td><td>(1, 7)</td><td>(1, 16)</td><td>(1, 7)</td><td>(1, 16)</td></tr><tr class="diff"><td>01598v</td><td>v</td><td>(0, 8)</td><td>(-1, 17)</td><td>(0, 8)</td><td>(-1, 16)</td></tr><tr class=""><td>01728v</td><td>v</td><td>(1, 8)</td><td>(1, 18)</td><td>(1, 8)</td><td>(1, 18)</td></tr><tr class=""><td>10131v</td><td>v</td><td>(2, 6)</td><td>(3, 12)</td><td>(2, 6)</td><td>(3, 12)</td></tr><tr class=""><td>31421v</td><td>v</td><td>(0, 8)</td><td>(0, 13)</td><td>(0, 8)</td><td>(0, 13)</td></tr></tbody></table></div>
+<div class="legend"><span class="l-diff">L2 and NCC differ by 1 px (not visible)</span><span class="l-fail">L2 fails</span></div>
+<div class="callout ok"><p><b>NCC aligns all 18 plates. L2 fails on one (01725u).</b> The other 5 disagreements between the
+two metrics are a single pixel and are not visible.</p></div>
+
+<h3 id="failure">Failure analysis: 01725u with L2</h3>
+<div class="grid-2">
+  <figure class="plain"><a href="results/images/failure/crops.jpg" target="_blank" rel="noopener"><img src="results/images/thumbs/failure/crops.jpg" alt="<b>01725u, center crop</b> L2 (left) leaves strong red/green ghosts; NCC (right) is sharp."></a><figcaption><b>01725u, center crop</b> L2 (left) leaves strong red/green ghosts; NCC (right) is sharp.</figcaption></figure>
+  <figure class="plain"><a href="results/images/failure/channels.jpg" target="_blank" rel="noopener"><img src="results/images/thumbs/failure/channels.jpg" alt="<b>The three channels</b> the rugs and robe are much brighter in R than in B."></a><figcaption><b>The three channels</b> the rugs and robe are much brighter in R than in B.</figcaption></figure>
+</div>
+<ol class="steps">
+  <li><b>The channels don't have the same brightness.</b> The rug merchant is surrounded by red rugs and wears a red robe, so the
+      R plate is much brighter and more contrasty than B (mean 0.49 vs 0.28, standard deviation
+      0.26 vs 0.13). L2 compares raw values, so even at the correct shift the difference is large and
+      the brightness mismatch drowns out the structure. NCC divides out each image's overall scale.</li>
+  <li><b>The mistake happens at the coarsest level.</b> At about 200 × 234 px most detail is gone. There, L2's wrong pick scored
+      40.18 against 41.44 for the right region: a 3% difference, easily flipped. NCC separated them clearly (0.963 for the right region vs 0.887 for L2's pick).</li>
+  <li><b>The pyramid can't recover.</b> Each finer level only refines by ±2 px, so the coarse error is just doubled:
+      <span class="mono">(-17, 20) → (-34, 40) → (-69, 80) → (-137, 161) → (-275, 323)</span> (NCC: <span class="mono">(5, 10) → (10, 20) → (19, 40) → (39, 81) → (77, 161)</span>).
+      At full resolution L2 actually prefers the correct offset (697.5 vs 704.9), but the pyramid never gets to test it.</li>
+  <li><b>Warning sign:</b> the coarse pick sits exactly on the edge of the ±20 window, meaning the search didn't
+      find a real minimum.</li>
+</ol>
+<p>Aligning on edges instead of raw brightness fixes this; see <a href="#b1">B1</a>.</p>
+
+<h3 id="own">My choice of image from the collection</h3>
+<!-- generated:own start (report.py) -->
+<p>I downloaded six full-size plates (TIFFs: five 16-bit, one 8-bit, 37–74 MB each) from the
+<a href="https://www.loc.gov/collections/prokudin-gorskii/" target="_blank" rel="noopener">Library of Congress collection</a>,
+made my own low-res versions with my Gaussian <code>downsample</code> (halving 3 times, to about 1,200 px tall), and ran the
+same fixed-parameter pipeline: single-scale on the low-res version, the pyramid on the full plate.</p>
+<h4>Results: low-res (single scale) and full size (pyramid), L2 vs. NCC</h4>
+<div class="metric-grid full"><figure class="metric-card fail" style="--n: 4"><div class="metric-pair"><a href="results/images/own/low-res/l2/00153a.jpg" target="_blank" rel="noopener"><img src="results/images/thumbs/own/low-res/l2/00153a.jpg" alt="00153a, low-res · L2"><span class="tag tag-l">low-res · L2</span></a><a href="results/images/own/low-res/ncc/00153a.jpg" target="_blank" rel="noopener"><img src="results/images/thumbs/own/low-res/ncc/00153a.jpg" alt="00153a, low-res · NCC"><span class="tag tag-l">low-res · NCC</span></a><a href="results/images/own/full/l2/00153a.jpg" target="_blank" rel="noopener"><img src="results/images/thumbs/own/full/l2/00153a.jpg" alt="00153a, full · L2"><span class="tag tag-l">full · L2</span></a><a href="results/images/own/full/ncc/00153a.jpg" target="_blank" rel="noopener"><img src="results/images/thumbs/own/full/ncc/00153a.jpg" alt="00153a, full · NCC"><span class="tag tag-l">full · NCC</span></a></div><figcaption><b>00153a</b><span class="mono">G (3, 9) · R (20, 18)</span><span class="mono">G (3, 9) · R (6, 17)</span><span class="mono">G (25, 69) · R (275, -210)</span><span class="mono">G (25, 69) · R (-194, 312)</span></figcaption></figure><figure class="metric-card" style="--n: 4"><div class="metric-pair"><a href="results/images/own/low-res/l2/00166a.jpg" target="_blank" rel="noopener"><img src="results/images/thumbs/own/low-res/l2/00166a.jpg" alt="00166a, low-res · L2"><span class="tag tag-l">low-res · L2</span></a><a href="results/images/own/low-res/ncc/00166a.jpg" target="_blank" rel="noopener"><img src="results/images/thumbs/own/low-res/ncc/00166a.jpg" alt="00166a, low-res · NCC"><span class="tag tag-l">low-res · NCC</span></a><a href="results/images/own/full/l2/00166a.jpg" target="_blank" rel="noopener"><img src="results/images/thumbs/own/full/l2/00166a.jpg" alt="00166a, full · L2"><span class="tag tag-l">full · L2</span></a><a href="results/images/own/full/ncc/00166a.jpg" target="_blank" rel="noopener"><img src="results/images/thumbs/own/full/ncc/00166a.jpg" alt="00166a, full · NCC"><span class="tag tag-l">full · NCC</span></a></div><figcaption><b>00166a</b><span class="mono">G (2, 3) · R (5, 15)</span><span class="mono">G (2, 3) · R (5, 15)</span><span class="mono">G (18, 26) · R (35, 121)</span><span class="mono">G (18, 26) · R (35, 121)</span></figcaption></figure><figure class="metric-card" style="--n: 4"><div class="metric-pair"><a href="results/images/own/low-res/l2/00169a.jpg" target="_blank" rel="noopener"><img src="results/images/thumbs/own/low-res/l2/00169a.jpg" alt="00169a, low-res · L2"><span class="tag tag-l">low-res · L2</span></a><a href="results/images/own/low-res/ncc/00169a.jpg" target="_blank" rel="noopener"><img src="results/images/thumbs/own/low-res/ncc/00169a.jpg" alt="00169a, low-res · NCC"><span class="tag tag-l">low-res · NCC</span></a><a href="results/images/own/full/l2/00169a.jpg" target="_blank" rel="noopener"><img src="results/images/thumbs/own/full/l2/00169a.jpg" alt="00169a, full · L2"><span class="tag tag-l">full · L2</span></a><a href="results/images/own/full/ncc/00169a.jpg" target="_blank" rel="noopener"><img src="results/images/thumbs/own/full/ncc/00169a.jpg" alt="00169a, full · NCC"><span class="tag tag-l">full · NCC</span></a></div><figcaption><b>00169a</b><span class="mono">G (-5, 9) · R (-8, 14)</span><span class="mono">G (-5, 9) · R (-8, 14)</span><span class="mono">G (-41, 75) · R (-68, 114)</span><span class="mono">G (-41, 75) · R (-68, 114)</span></figcaption></figure><figure class="metric-card fail" style="--n: 4"><div class="metric-pair"><a href="results/images/own/low-res/l2/00170a.jpg" target="_blank" rel="noopener"><img src="results/images/thumbs/own/low-res/l2/00170a.jpg" alt="00170a, low-res · L2"><span class="tag tag-l">low-res · L2</span></a><a href="results/images/own/low-res/ncc/00170a.jpg" target="_blank" rel="noopener"><img src="results/images/thumbs/own/low-res/ncc/00170a.jpg" alt="00170a, low-res · NCC"><span class="tag tag-l">low-res · NCC</span></a><a href="results/images/own/full/l2/00170a.jpg" target="_blank" rel="noopener"><img src="results/images/thumbs/own/full/l2/00170a.jpg" alt="00170a, full · L2"><span class="tag tag-l">full · L2</span></a><a href="results/images/own/full/ncc/00170a.jpg" target="_blank" rel="noopener"><img src="results/images/thumbs/own/full/ncc/00170a.jpg" alt="00170a, full · NCC"><span class="tag tag-l">full · NCC</span></a></div><figcaption><b>00170a</b><span class="mono">G (0, 5) · R (-10, -6)</span><span class="mono">G (2, 6) · R (2, 0)</span><span class="mono">G (8, 43) · R (-78, -45)</span><span class="mono">G (14, 52) · R (23, 5)</span></figcaption></figure><figure class="metric-card" style="--n: 4"><div class="metric-pair"><a href="results/images/own/low-res/l2/00212a.jpg" target="_blank" rel="noopener"><img src="results/images/thumbs/own/low-res/l2/00212a.jpg" alt="00212a, low-res · L2"><span class="tag tag-l">low-res · L2</span></a><a href="results/images/own/low-res/ncc/00212a.jpg" target="_blank" rel="noopener"><img src="results/images/thumbs/own/low-res/ncc/00212a.jpg" alt="00212a, low-res · NCC"><span class="tag tag-l">low-res · NCC</span></a><a href="results/images/own/full/l2/00212a.jpg" target="_blank" rel="noopener"><img src="results/images/thumbs/own/full/l2/00212a.jpg" alt="00212a, full · L2"><span class="tag tag-l">full · L2</span></a><a href="results/images/own/full/ncc/00212a.jpg" target="_blank" rel="noopener"><img src="results/images/thumbs/own/full/ncc/00212a.jpg" alt="00212a, full · NCC"><span class="tag tag-l">full · NCC</span></a></div><figcaption><b>00212a</b><span class="mono">G (-1, 6) · R (-2, 14)</span><span class="mono">G (-1, 6) · R (-2, 14)</span><span class="mono">G (-9, 48) · R (-15, 111)</span><span class="mono">G (-9, 48) · R (-15, 111)</span></figcaption></figure><figure class="metric-card" style="--n: 4"><div class="metric-pair"><a href="results/images/own/low-res/l2/00171u.jpg" target="_blank" rel="noopener"><img src="results/images/thumbs/own/low-res/l2/00171u.jpg" alt="00171u, low-res · L2"><span class="tag tag-l">low-res · L2</span></a><a href="results/images/own/low-res/ncc/00171u.jpg" target="_blank" rel="noopener"><img src="results/images/thumbs/own/low-res/ncc/00171u.jpg" alt="00171u, low-res · NCC"><span class="tag tag-l">low-res · NCC</span></a><a href="results/images/own/full/l2/00171u.jpg" target="_blank" rel="noopener"><img src="results/images/thumbs/own/full/l2/00171u.jpg" alt="00171u, full · L2"><span class="tag tag-l">full · L2</span></a><a href="results/images/own/full/ncc/00171u.jpg" target="_blank" rel="noopener"><img src="results/images/thumbs/own/full/ncc/00171u.jpg" alt="00171u, full · NCC"><span class="tag tag-l">full · NCC</span></a></div><figcaption><b>00171u</b><span class="mono">G (-1, 6) · R (-3, 12)</span><span class="mono">G (-1, 6) · R (-3, 12)</span><span class="mono">G (-6, 49) · R (-25, 96)</span><span class="mono">G (-6, 49) · R (-25, 96)</span></figcaption></figure></div>
+<div class="table-wrap"><table class=""><thead><tr><th>Plate</th><th>channel height</th><th>low-res G (L2)</th><th>low-res R (L2)</th><th>low-res G (NCC)</th><th>low-res R (NCC)</th><th>full G (L2)</th><th>full R (L2)</th><th>full G (NCC)</th><th>full R (NCC)</th></tr></thead><tbody><tr class="fail"><td>00153a</td><td>3223</td><td>(3, 9)</td><td>(20, 18)</td><td>(3, 9)</td><td>(6, 17)</td><td>(25, 69)</td><td>(275, -210)</td><td>(25, 69)</td><td>(-194, 312)</td></tr><tr class=""><td>00166a</td><td>3218</td><td>(2, 3)</td><td>(5, 15)</td><td>(2, 3)</td><td>(5, 15)</td><td>(18, 26)</td><td>(35, 121)</td><td>(18, 26)</td><td>(35, 121)</td></tr><tr class=""><td>00169a</td><td>3224</td><td>(-5, 9)</td><td>(-8, 14)</td><td>(-5, 9)</td><td>(-8, 14)</td><td>(-41, 75)</td><td>(-68, 114)</td><td>(-41, 75)</td><td>(-68, 114)</td></tr><tr class="fail"><td>00170a</td><td>3257</td><td>(0, 5)</td><td>(-10, -6)</td><td>(2, 6)</td><td>(2, 0)</td><td>(8, 43)</td><td>(-78, -45)</td><td>(14, 52)</td><td>(23, 5)</td></tr><tr class=""><td>00212a</td><td>3254</td><td>(-1, 6)</td><td>(-2, 14)</td><td>(-1, 6)</td><td>(-2, 14)</td><td>(-9, 48)</td><td>(-15, 111)</td><td>(-9, 48)</td><td>(-15, 111)</td></tr><tr class=""><td>00171u</td><td>3250</td><td>(-1, 6)</td><td>(-3, 12)</td><td>(-1, 6)</td><td>(-3, 12)</td><td>(-6, 49)</td><td>(-25, 96)</td><td>(-6, 49)</td><td>(-25, 96)</td></tr></tbody></table></div>
+<div class="legend"><span class="l-fail">misaligned</span></div>
+<!-- generated:own end -->
+<p>Four of the six align well: the farmhouse (00166a), the trees at dusk (00169a), the lilac bush (00171u) and the cathedral
+roof (00212a). Their low-res and full-size offsets agree after scaling by 8, within a few pixels
+(for example 00212a: R (-2, 14) × 8 = (-16, 112) vs. (-15, 111)).</p>
+<p><b>00153a</b> (a seated portrait in a large blue robe) aligns at low resolution, but on the full-size plate the pyramid misaligns
+R with both metrics. Aligning on edges fixes it; see <a href="#b1">B1</a>.</p>
+<div class="callout"><p><b>00170a (a sunset over water) fails with every method,</b> including the edge features of B1.
+The scene is almost entirely smooth sky and water, so there is very little structure for any metric to match. The strongest
+features are the horizon, a single horizontal line, and the red scan damage along the bottom of the plate, which is different on
+each exposure. The inconsistent offsets show it: R's shift is normally about double G's, but NCC gives G (14, 52) and R (23, 5),
+and on edges G (-46, 51) and R (-177, -118).</p></div>
+
+<!-- ================================================================ BELLS & WHISTLES -->
+<h2 id="bells"><span class="part">Bells &amp; whistles</span>Beyond basic alignment</h2>
+<p class="lead">The alignments using NCC and L2 above already looks good, but it's far from the hand-restored versions. These extras make it
+more robust and closer to a finished photograph. Libraries used here: <code>scipy.ndimage</code> for the Sobel filter, Gaussian blur and
+the rotation / scaling warp.</p>
+
+<h3 id="b1">B1 · Better features: aligning on edges</h3>
+<p>Brightness differs between channels, but <b>edges</b> (where brightness changes) sit in the same place in every channel. I compute
+the gradient magnitude with Sobel filters, <code>sqrt(Gx² + Gy²)</code>, and run the same pyramid alignment on these edge maps
+instead of the raw pixels.</p>
+<div class="wide"><figure class="plain"><a href="results/images/bells_whistles/b1_edges.jpg" target="_blank" rel="noopener"><img src="results/images/thumbs/bells_whistles/b1_edges.jpg" alt="<b>01725u</b> the raw B and R channels look very different; their edge maps look alike."></a><figcaption><b>01725u</b> the raw B and R channels look very different; their edge maps look alike.</figcaption></figure></div>
+<div class="wide"><figure class="plain"><a href="results/images/bells_whistles/b1_before_after.jpg" target="_blank" rel="noopener"><img src="results/images/thumbs/bells_whistles/b1_before_after.jpg" alt="<b>Before / after</b> the same L2 metric, on raw pixels (left) and on edges (right)."></a><figcaption><b>Before / after</b> the same L2 metric, on raw pixels (left) and on edges (right).</figcaption></figure></div>
+<p>With edges, <b>L2 now aligns 01725u</b> and L2 and NCC agree on 17 of 18 plates (the last differs by 1 px). Edges also move a few offsets compared with raw-pixel NCC, by up to 4 px on 00458u and 3 px on 01657u. Both plates have a slight rotation and scale difference between channels (B6 finds 0.1–0.3° and ×1.005), so no single shift fits the whole plate exactly; raw pixels and edges weight different parts of the image and settle on slightly different best shifts. The remaining misfit shows up as fringes near the corners, which B6 corrects (see the 00458u corner in <a href="#b6">B6</a>).</p>
+<!-- generated:b1_table start (report.py) -->
+<details><summary>Show edge-based offsets for all 18 plates</summary><div>
+<div class="table-wrap"><table class=""><thead><tr><th>Plate</th><th>G raw L2</th><th>R raw L2</th><th>G raw NCC</th><th>R raw NCC</th><th>G edges L2</th><th>R edges L2</th><th>G edges NCC</th><th>R edges NCC</th></tr></thead><tbody><tr class=""><td>01007a</td><td>(14, 60)</td><td>(13, 129)</td><td>(14, 60)</td><td>(13, 129)</td><td>(14, 60)</td><td>(13, 129)</td><td>(14, 60)</td><td>(13, 129)</td></tr><tr class=""><td>01861a</td><td>(38, 71)</td><td>(62, 148)</td><td>(39, 71)</td><td>(63, 148)</td><td>(39, 71)</td><td>(62, 147)</td><td>(39, 71)</td><td>(62, 147)</td></tr><tr class=""><td>00458u</td><td>(6, 43)</td><td>(32, 87)</td><td>(6, 43)</td><td>(32, 87)</td><td>(2, 42)</td><td>(29, 85)</td><td>(2, 41)</td><td>(29, 85)</td></tr><tr class=""><td>01047u</td><td>(20, 24)</td><td>(33, 71)</td><td>(20, 24)</td><td>(33, 71)</td><td>(20, 25)</td><td>(33, 71)</td><td>(20, 25)</td><td>(33, 71)</td></tr><tr class=""><td>01657u</td><td>(8, 56)</td><td>(11, 116)</td><td>(8, 55)</td><td>(11, 117)</td><td>(9, 56)</td><td>(13, 120)</td><td>(9, 56)</td><td>(13, 120)</td></tr><tr class="fixed"><td>01725u</td><td>(44, 77)</td><td>(-275, 323)</td><td>(44, 77)</td><td>(77, 161)</td><td>(44, 76)</td><td>(77, 162)</td><td>(44, 76)</td><td>(77, 162)</td></tr><tr class=""><td>00056v</td><td>(1, 6)</td><td>(1, 13)</td><td>(1, 6)</td><td>(1, 13)</td><td>(1, 6)</td><td>(1, 13)</td><td>(1, 6)</td><td>(1, 13)</td></tr><tr class=""><td>00125v</td><td>(2, 5)</td><td>(1, 10)</td><td>(2, 5)</td><td>(1, 10)</td><td>(2, 5)</td><td>(1, 10)</td><td>(2, 5)</td><td>(1, 10)</td></tr><tr class=""><td>00163v</td><td>(1, -3)</td><td>(1, -4)</td><td>(1, -3)</td><td>(1, -4)</td><td>(1, -3)</td><td>(1, -4)</td><td>(1, -3)</td><td>(1, -4)</td></tr><tr class=""><td>00804v</td><td>(-2, 6)</td><td>(-4, 13)</td><td>(-2, 6)</td><td>(-4, 13)</td><td>(-2, 6)</td><td>(-4, 13)</td><td>(-2, 6)</td><td>(-4, 13)</td></tr><tr class=""><td>01164v</td><td>(2, 6)</td><td>(3, 11)</td><td>(2, 6)</td><td>(3, 11)</td><td>(2, 6)</td><td>(3, 11)</td><td>(2, 6)</td><td>(3, 11)</td></tr><tr class=""><td>01269v</td><td>(2, 6)</td><td>(3, 14)</td><td>(2, 6)</td><td>(3, 13)</td><td>(2, 6)</td><td>(3, 13)</td><td>(2, 6)</td><td>(3, 13)</td></tr><tr class=""><td>01522v</td><td>(2, 6)</td><td>(1, 13)</td><td>(2, 6)</td><td>(2, 13)</td><td>(2, 6)</td><td>(2, 13)</td><td>(2, 6)</td><td>(2, 13)</td></tr><tr class=""><td>01597v</td><td>(1, 7)</td><td>(1, 16)</td><td>(1, 7)</td><td>(1, 16)</td><td>(1, 7)</td><td>(1, 16)</td><td>(1, 7)</td><td>(1, 16)</td></tr><tr class=""><td>01598v</td><td>(0, 8)</td><td>(-1, 17)</td><td>(0, 8)</td><td>(-1, 16)</td><td>(0, 8)</td><td>(-1, 16)</td><td>(0, 8)</td><td>(-1, 16)</td></tr><tr class=""><td>01728v</td><td>(1, 8)</td><td>(1, 18)</td><td>(1, 8)</td><td>(1, 18)</td><td>(1, 8)</td><td>(1, 18)</td><td>(1, 8)</td><td>(1, 18)</td></tr><tr class=""><td>10131v</td><td>(2, 6)</td><td>(3, 12)</td><td>(2, 6)</td><td>(3, 12)</td><td>(2, 6)</td><td>(3, 12)</td><td>(2, 6)</td><td>(3, 12)</td></tr><tr class=""><td>31421v</td><td>(0, 8)</td><td>(0, 13)</td><td>(0, 8)</td><td>(0, 13)</td><td>(0, 8)</td><td>(0, 13)</td><td>(0, 8)</td><td>(0, 13)</td></tr></tbody></table></div>
+<div class="legend"><span class="l-fixed">fixed by edges</span></div></div></details>
+<!-- generated:b1_table end -->
+<!-- generated:b1_own start (report.py) -->
+<h4>My own plate 00153a</h4>
+<p>On the full-size plate, the pyramid on raw pixels misaligns R with both metrics (NCC (-194, 312), L2 (275, -210)). The channels disagree about what is bright: in R the robe is much darker than the wall behind it, while in B the two are about equally bright, so the raw brightness patterns don't match. On edges, L2 and NCC both give R (39, 142), close to the low-res single-scale offset scaled up, R (6, 17) × 8 = (48, 136).</p>
+<div class="metric-grid full"><figure class="metric-card" style="--n: 4"><div class="metric-pair"><a href="results/images/bells_whistles/b1_00153a_raw_l2.jpg" target="_blank" rel="noopener"><img src="results/images/thumbs/bells_whistles/b1_00153a_raw_l2.jpg" alt="00153a, raw · L2"><span class="tag tag-l">raw · L2</span></a><a href="results/images/bells_whistles/b1_00153a_raw_ncc.jpg" target="_blank" rel="noopener"><img src="results/images/thumbs/bells_whistles/b1_00153a_raw_ncc.jpg" alt="00153a, raw · NCC"><span class="tag tag-l">raw · NCC</span></a><a href="results/images/bells_whistles/b1_00153a_edges_l2.jpg" target="_blank" rel="noopener"><img src="results/images/thumbs/bells_whistles/b1_00153a_edges_l2.jpg" alt="00153a, edges · L2"><span class="tag tag-l">edges · L2</span></a><a href="results/images/bells_whistles/b1_00153a_edges_ncc.jpg" target="_blank" rel="noopener"><img src="results/images/thumbs/bells_whistles/b1_00153a_edges_ncc.jpg" alt="00153a, edges · NCC"><span class="tag tag-l">edges · NCC</span></a></div><figcaption><b>00153a</b><span class="mono">G (25, 69) · R (275, -210)</span><span class="mono">G (25, 69) · R (-194, 312)</span><span class="mono">G (24, 70) · R (39, 142)</span><span class="mono">G (24, 70) · R (39, 142)</span></figcaption></figure></div>
+<div class="table-wrap"><table class=""><thead><tr><th>Plate</th><th>G raw L2</th><th>R raw L2</th><th>G raw NCC</th><th>R raw NCC</th><th>G edges L2</th><th>R edges L2</th><th>G edges NCC</th><th>R edges NCC</th></tr></thead><tbody><tr class="fixed"><td>00153a</td><td>(25, 69)</td><td>(275, -210)</td><td>(25, 69)</td><td>(-194, 312)</td><td>(24, 70)</td><td>(39, 142)</td><td>(24, 70)</td><td>(39, 142)</td></tr></tbody></table></div>
+<div class="legend"><span class="l-fixed">fixed by edges</span></div>
+<!-- generated:b1_own end -->
+
+<h3 id="b2">B2 · Automatic cropping</h3>
+<p>The borders of the result have strange colors: the three plates' borders don't line up, and <code>np.roll</code> wraps pixels
+around. Rather than cropping a fixed margin, the crop is detected per image:</p>
+<ol class="steps">
+  <li><b>Wrapped pixels.</b> The alignment offsets say exactly how many rows and columns were wrapped around by <code>np.roll</code>; those are removed.</li>
+  <li><b>Border lines.</b> A plate border is a straight line across the whole image, so the brightness jump between two neighbouring rows is
+      large in <em>every</em> column of that row. Edges inside the picture are scattered and average out. In the outer 10% of each side,
+      I find the innermost row / column whose average jump is more than 5× the image's median, in any channel, and crop there.</li>
+</ol>
+<div class="grid-3">
+  <figure class=""><a href="results/images/bells_whistles/b2_00458u_box.jpg" target="_blank" rel="noopener"><img src="results/images/thumbs/bells_whistles/b2_00458u_box.jpg" alt="<b>00458u</b> detected box"></a><figcaption><b>00458u</b> detected box</figcaption></figure>
+  <figure class=""><a href="results/images/bells_whistles/b2_01725u_box.jpg" target="_blank" rel="noopener"><img src="results/images/thumbs/bells_whistles/b2_01725u_box.jpg" alt="<b>01725u</b> detected box"></a><figcaption><b>01725u</b> detected box</figcaption></figure>
+  <figure class=""><a href="results/images/bells_whistles/b2_00125v_box.jpg" target="_blank" rel="noopener"><img src="results/images/thumbs/bells_whistles/b2_00125v_box.jpg" alt="<b>00125v</b> detected box"></a><figcaption><b>00125v</b> detected box</figcaption></figure>
+  <figure class=""><a href="results/images/bells_whistles/b2_00458u_cropped.jpg" target="_blank" rel="noopener"><img src="results/images/thumbs/bells_whistles/b2_00458u_cropped.jpg" alt="cropped"></a><figcaption>cropped</figcaption></figure>
+  <figure class=""><a href="results/images/bells_whistles/b2_01725u_cropped.jpg" target="_blank" rel="noopener"><img src="results/images/thumbs/bells_whistles/b2_01725u_cropped.jpg" alt="cropped"></a><figcaption>cropped</figcaption></figure>
+  <figure class=""><a href="results/images/bells_whistles/b2_00125v_cropped.jpg" target="_blank" rel="noopener"><img src="results/images/thumbs/bells_whistles/b2_00125v_cropped.jpg" alt="cropped"></a><figcaption>cropped</figcaption></figure>
+</div>
+<p>It keeps 81–88% of each plate. <b>What didn't work first:</b> flagging "bad" pixels (very dark, very bright, or with channels that
+disagree) also flagged white skies and colorful scenes, and cut into the pictures. <b>Limitation:</b> on 01047u, the straight front
+edge of the table looks like a border line, so about 8% extra is cropped at the bottom. On my own plate 00166a, part of the white plate border is left on the right and bottom (see the final results).</p>
+<details><summary>Show crop boxes for all 18 plates</summary><div>
+<div class="table-wrap"><table class=""><thead><tr><th>Plate</th><th>top / bottom / left / right</th><th>kept</th></tr></thead><tbody><tr><td>01007a</td><td>236 / 3238 / 220 / 3596</td><td>82%</td></tr><tr><td>01861a</td><td>156 / 3160 / 260 / 3588</td><td>83%</td></tr><tr><td>00458u</td><td>212 / 3212 / 184 / 3584</td><td>84%</td></tr><tr><td>01047u</td><td>160 / 2956 / 68 / 3548</td><td>81%</td></tr><tr><td>01657u</td><td>220 / 3184 / 184 / 3532</td><td>82%</td></tr><tr><td>01725u</td><td>164 / 3231 / 200 / 3612</td><td>87%</td></tr><tr><td>00056v</td><td>13 / 331 / 24 / 388</td><td>85%</td></tr><tr><td>00125v</td><td>26 / 339 / 27 / 383</td><td>82%</td></tr><tr><td>00163v</td><td>9 / 332 / 8 / 366</td><td>88%</td></tr><tr><td>00804v</td><td>21 / 341 / 21 / 375</td><td>84%</td></tr><tr><td>01164v</td><td>25 / 337 / 22 / 378</td><td>82%</td></tr><tr><td>01269v</td><td>27 / 341 / 25 / 382</td><td>83%</td></tr><tr><td>01522v</td><td>20 / 338 / 10 / 374</td><td>87%</td></tr><tr><td>01597v</td><td>18 / 330 / 26 / 378</td><td>82%</td></tr><tr><td>01598v</td><td>16 / 334 / 14 / 379</td><td>87%</td></tr><tr><td>01728v</td><td>27 / 341 / 20 / 373</td><td>82%</td></tr><tr><td>10131v</td><td>26 / 341 / 20 / 377</td><td>82%</td></tr><tr><td>31421v</td><td>14 / 341 / 20 / 377</td><td>86%</td></tr></tbody></table></div></div></details>
+
+<h3 id="b3">B3 · Automatic contrast</h3>
+<p>A linear stretch, as the assignment suggests: the darkest value (over all channels) becomes 0 and the brightest becomes 1. I use the
+0.5th and 99.5th percentiles instead of the exact minimum and maximum, so a few dust specks or scratches don't decide the stretch,
+and the same mapping is applied to all three channels so the colors don't shift.</p>
+<div class="grid-4">
+  <figure class=""><a href="results/images/bells_whistles/b3_01007a_before.jpg" target="_blank" rel="noopener"><img src="results/images/thumbs/bells_whistles/b3_01007a_before.jpg" alt="<b>01007a</b> before"></a><figcaption><b>01007a</b> before</figcaption></figure>
+  <figure class=""><a href="results/images/bells_whistles/b3_01007a_after.jpg" target="_blank" rel="noopener"><img src="results/images/thumbs/bells_whistles/b3_01007a_after.jpg" alt="after"></a><figcaption>after</figcaption></figure>
+  <figure class=""><a href="results/images/bells_whistles/b3_01657u_before.jpg" target="_blank" rel="noopener"><img src="results/images/thumbs/bells_whistles/b3_01657u_before.jpg" alt="<b>01657u</b> before"></a><figcaption><b>01657u</b> before</figcaption></figure>
+  <figure class=""><a href="results/images/bells_whistles/b3_01657u_after.jpg" target="_blank" rel="noopener"><img src="results/images/thumbs/bells_whistles/b3_01657u_after.jpg" alt="after"></a><figcaption>after</figcaption></figure>
+</div>
+
+<h3 id="b4">B4 · Automatic white balance</h3>
+<p>Two steps: estimate the color of the light (the illuminant), then scale each channel so that color becomes neutral.</p>
+<ul>
+  <li><b>Gray world:</b> assume the scene averages to gray; the illuminant is the average color.</li>
+  <li><b>White patch:</b> assume the brightest color is white; the illuminant is the 99th percentile of each channel.</li>
+</ul>
+<div class="grid-4">
+  <figure class=""><a href="results/images/bells_whistles/b4_01657u_none.jpg" target="_blank" rel="noopener"><img src="results/images/thumbs/bells_whistles/b4_01657u_none.jpg" alt="<b>01657u</b> contrast only"></a><figcaption><b>01657u</b> contrast only</figcaption></figure>
+  <figure class=""><a href="results/images/bells_whistles/b4_01657u_grayworld.jpg" target="_blank" rel="noopener"><img src="results/images/thumbs/bells_whistles/b4_01657u_grayworld.jpg" alt="gray world"></a><figcaption>gray world</figcaption></figure>
+  <figure class=""><a href="results/images/bells_whistles/b4_01657u_grayworld_half.jpg" target="_blank" rel="noopener"><img src="results/images/thumbs/bells_whistles/b4_01657u_grayworld_half.jpg" alt="gray world ×0.5"></a><figcaption>gray world ×0.5</figcaption></figure>
+  <figure class=""><a href="results/images/bells_whistles/b4_01657u_whitepatch.jpg" target="_blank" rel="noopener"><img src="results/images/thumbs/bells_whistles/b4_01657u_whitepatch.jpg" alt="white patch"></a><figcaption>white patch</figcaption></figure>
+  <figure class=""><a href="results/images/bells_whistles/b4_00125v_none.jpg" target="_blank" rel="noopener"><img src="results/images/thumbs/bells_whistles/b4_00125v_none.jpg" alt="<b>00125v</b> contrast only"></a><figcaption><b>00125v</b> contrast only</figcaption></figure>
+  <figure class=""><a href="results/images/bells_whistles/b4_00125v_grayworld.jpg" target="_blank" rel="noopener"><img src="results/images/thumbs/bells_whistles/b4_00125v_grayworld.jpg" alt="gray world"></a><figcaption>gray world</figcaption></figure>
+  <figure class=""><a href="results/images/bells_whistles/b4_00125v_grayworld_half.jpg" target="_blank" rel="noopener"><img src="results/images/thumbs/bells_whistles/b4_00125v_grayworld_half.jpg" alt="gray world ×0.5"></a><figcaption>gray world ×0.5</figcaption></figure>
+  <figure class=""><a href="results/images/bells_whistles/b4_00125v_whitepatch.jpg" target="_blank" rel="noopener"><img src="results/images/thumbs/bells_whistles/b4_00125v_whitepatch.jpg" alt="white patch"></a><figcaption>white patch</figcaption></figure>
+</div>
+<p>Gray world removes the magenta cast from the portrait, but over-corrects scenes dominated by one color: in the river landscape, the
+green fields pull the average away from gray, and the correction turns the sky purple. White patch barely changes anything, because each
+plate's brightest pixels are already close to white. So the final pipeline uses <b>gray world at half strength</b>: the channel gains
+move only half-way from 1, which keeps most of the correction without the over-shoot.</p>
+
+<h3 id="b5">B5 · Better color mapping</h3>
+<p>Prokudin-Gorskii's filters don't match the red, green and blue of a modern screen, so each output channel should really be a mix of the
+three plates. A 3×3 color matrix does exactly that: <code>[r', g', b'] = M · [r, g, b]</code> for every pixel.
+I tried a <b>warm</b> and a <b>cool</b> matrix, chosen by hand (not fitted to data), each with its difference from the identity amplified 5×
+(<code>M' = I + 5 (M − I)</code>):</p>
+<div class="matrices">
+  <div>identity<table class='matrix'><tr><td>+1.00</td><td>+0.00</td><td>+0.00</td></tr><tr><td>+0.00</td><td>+1.00</td><td>+0.00</td></tr><tr><td>+0.00</td><td>+0.00</td><td>+1.00</td></tr></table></div><div>warm<table class='matrix'><tr><td>+1.50</td><td>-0.20</td><td>-0.10</td></tr><tr><td>-0.05</td><td>+1.20</td><td>-0.05</td></tr><tr><td>+0.00</td><td>-0.15</td><td>+0.85</td></tr></table></div><div>cool<table class='matrix'><tr><td>+0.90</td><td>-0.10</td><td>+0.00</td></tr><tr><td>-0.10</td><td>+1.15</td><td>-0.05</td></tr><tr><td>-0.15</td><td>-0.20</td><td>+1.50</td></tr></table></div>
+</div>
+<p>Negative off-diagonal entries subtract a little of the other channels, which increases saturation. Because the rows of these
+matrices don't sum to 1, they also tint the image: warm boosts red and cuts blue, cool does the opposite.</p>
+<div class="grid-3">
+  <figure class=""><a href="results/images/bells_whistles/b5_01047u_identity.jpg" target="_blank" rel="noopener"><img src="results/images/thumbs/bells_whistles/b5_01047u_identity.jpg" alt="<b>01047u</b> identity"></a><figcaption><b>01047u</b> identity</figcaption></figure><figure class=""><a href="results/images/bells_whistles/b5_01047u_warm.jpg" target="_blank" rel="noopener"><img src="results/images/thumbs/bells_whistles/b5_01047u_warm.jpg" alt="warm"></a><figcaption>warm</figcaption></figure><figure class=""><a href="results/images/bells_whistles/b5_01047u_cool.jpg" target="_blank" rel="noopener"><img src="results/images/thumbs/bells_whistles/b5_01047u_cool.jpg" alt="cool"></a><figcaption>cool</figcaption></figure>
+  <figure class=""><a href="results/images/bells_whistles/b5_00125v_identity.jpg" target="_blank" rel="noopener"><img src="results/images/thumbs/bells_whistles/b5_00125v_identity.jpg" alt="<b>00125v</b> identity"></a><figcaption><b>00125v</b> identity</figcaption></figure><figure class=""><a href="results/images/bells_whistles/b5_00125v_warm.jpg" target="_blank" rel="noopener"><img src="results/images/thumbs/bells_whistles/b5_00125v_warm.jpg" alt="warm"></a><figcaption>warm</figcaption></figure><figure class=""><a href="results/images/bells_whistles/b5_00125v_cool.jpg" target="_blank" rel="noopener"><img src="results/images/thumbs/bells_whistles/b5_00125v_cool.jpg" alt="cool"></a><figcaption>cool</figcaption></figure>
+</div>
+<p>To measure the effect, I use the Hasler &amp; Süsstrunk colorfulness score (higher = more colorful). Both matrices make every image more
+colorful; warm helps the warm-toned interiors most, cool helps the sky and water landscapes most. Without a professionally restored reference,
+this measures saturation, not accuracy. For the same reason B5 is <b>not</b> part of the final pipeline: with no reference image I can't tell whether a matrix makes the colors more realistic or just more saturated. A better version would fit the 3×3 matrix by least squares against a Library of Congress color-restored version of the same plate.</p>
+<div class="table-wrap"><table class=""><thead><tr><th>Plate</th><th>identity</th><th>warm</th><th>cool</th></tr></thead><tbody><tr><td>01657u</td><td>0.199</td><td>0.253</td><td>0.237</td></tr><tr><td>01047u</td><td>0.185</td><td>0.265</td><td>0.213</td></tr><tr><td>00125v</td><td>0.282</td><td>0.327</td><td>0.353</td></tr><tr><td>01164v</td><td>0.252</td><td>0.275</td><td>0.319</td></tr></tbody></table></div>
+
+<h3 id="b6">B6 · Better transformations: rotation and scale</h3>
+<p>So far each channel is only shifted. I also search small rotations (-0.6° to +0.6° in 0.1° steps)
+and scale changes (×0.99 to ×1.01), using the coarse-to-fine idea to keep it fast:</p>
+<ol class="steps">
+  <li>Find the shift with the edge-based pyramid (B1).</li>
+  <li>At the second-coarsest pyramid level (405 × 475 px for a full-size plate; low-res plates have a single level, so they are searched at full size), try all 13 × 5 angle / scale combinations;
+      for each, refine the shift by ±2 px and keep the best score.</li>
+  <li>Warp the full-size channel with the best angle and scale (bilinear interpolation), then run the coarse-to-fine shift search again.</li>
+</ol>
+<div class="callout">
+  <p><b>A bias I had to fix.</b> My first version "improved" every plate. Rotating or scaling resamples the image, which blurs it slightly,
+  and blurrier edge maps correlate better with <em>anything</em>, so the search was rewarding the blur. The fix: blur both edge maps
+  (Gaussian, σ = 2) before scoring, so the extra blur from warping no longer matters. As a control, aligning B to a copy of
+  itself shifted by (17, -9) gives exactly 0°, ×1.000 and the opposite shift (-17, 9).</p>
+</div>
+<div class="grid-2">
+  <figure class=""><a href="results/images/bells_whistles/b6_corner_before.jpg" target="_blank" rel="noopener"><img src="results/images/thumbs/bells_whistles/b6_corner_before.jpg" alt="<b>00458u, bottom-right corner</b> translation only: color fringes on the rails and rocks"></a><figcaption><b>00458u, bottom-right corner</b> translation only: color fringes on the rails and rocks</figcaption></figure>
+  <figure class=""><a href="results/images/bells_whistles/b6_corner_after.jpg" target="_blank" rel="noopener"><img src="results/images/thumbs/bells_whistles/b6_corner_after.jpg" alt="<b>translation + rotation + scale</b> the fringes are gone (the small colored dots are dust on the plate)"></a><figcaption><b>translation + rotation + scale</b> the fringes are gone (the small colored dots are dust on the plate)</figcaption></figure>
+</div>
+<p>Most channels come out slightly rotated and scaled relative to B: 30 of the 36 by 0.1–0.3°, and 26 of 36 slightly larger
+(21 × 1.005, 5 × 1.010). Rotation and scale errors grow with distance from the center, which is why the corner is shown above.
+On the full-size plates the edge NCC improves clearly (00458u G: 0.852 → 0.955); on the small plates
+it barely changes (at most +0.003). It takes about 2.8 s per full-size plate, which makes B6 the slowest step of the final pipeline (about 3 s per full-size plate in total).</p>
+<details><summary>Show rotation / scale for all 18 plates</summary><div>
+<div class="table-wrap"><table class=""><thead><tr><th>Plate</th><th>G angle, scale</th><th>G edge NCC</th><th>R angle, scale</th><th>R edge NCC</th></tr></thead><tbody><tr><td>01007a</td><td>+0.1°, ×1.005</td><td>0.947 → 0.955</td><td>+0.2°, ×1.000</td><td>0.914 → 0.925</td></tr><tr><td>01861a</td><td>+0.1°, ×1.000</td><td>0.877 → 0.895</td><td>+0.3°, ×1.000</td><td>0.848 → 0.861</td></tr><tr><td>00458u</td><td>+0.3°, ×1.005</td><td>0.852 → 0.955</td><td>+0.2°, ×1.005</td><td>0.853 → 0.907</td></tr><tr><td>01047u</td><td>0.0°, ×1.005</td><td>0.904 → 0.944</td><td>+0.1°, ×1.005</td><td>0.908 → 0.926</td></tr><tr><td>01657u</td><td>+0.1°, ×1.005</td><td>0.921 → 0.938</td><td>0.0°, ×1.005</td><td>0.886 → 0.906</td></tr><tr><td>01725u</td><td>+0.2°, ×1.005</td><td>0.919 → 0.956</td><td>+0.2°, ×1.005</td><td>0.803 → 0.822</td></tr><tr><td>00056v</td><td>+0.1°, ×1.010</td><td>0.868 → 0.870</td><td>+0.1°, ×1.010</td><td>0.841 → 0.844</td></tr><tr><td>00125v</td><td>+0.2°, ×1.005</td><td>0.933 → 0.936</td><td>+0.3°, ×1.005</td><td>0.934 → 0.936</td></tr><tr><td>00163v</td><td>0.0°, ×1.000</td><td>0.941 → 0.941</td><td>+0.1°, ×1.000</td><td>0.915 → 0.915</td></tr><tr><td>00804v</td><td>0.0°, ×1.005</td><td>0.946 → 0.946</td><td>+0.1°, ×1.005</td><td>0.932 → 0.933</td></tr><tr><td>01164v</td><td>+0.1°, ×1.010</td><td>0.971 → 0.973</td><td>0.0°, ×1.005</td><td>0.963 → 0.963</td></tr><tr><td>01269v</td><td>+0.2°, ×1.005</td><td>0.961 → 0.962</td><td>+0.3°, ×1.000</td><td>0.923 → 0.924</td></tr><tr><td>01522v</td><td>+0.1°, ×1.010</td><td>0.935 → 0.937</td><td>+0.3°, ×1.010</td><td>0.920 → 0.922</td></tr><tr><td>01597v</td><td>+0.1°, ×1.005</td><td>0.933 → 0.935</td><td>+0.3°, ×1.005</td><td>0.904 → 0.905</td></tr><tr><td>01598v</td><td>+0.1°, ×1.005</td><td>0.956 → 0.957</td><td>+0.2°, ×1.000</td><td>0.893 → 0.894</td></tr><tr><td>01728v</td><td>+0.1°, ×1.005</td><td>0.979 → 0.981</td><td>+0.1°, ×1.005</td><td>0.927 → 0.930</td></tr><tr><td>10131v</td><td>+0.1°, ×1.005</td><td>0.955 → 0.956</td><td>+0.2°, ×1.000</td><td>0.910 → 0.911</td></tr><tr><td>31421v</td><td>0.0°, ×1.000</td><td>0.989 → 0.989</td><td>+0.1°, ×1.000</td><td>0.980 → 0.980</td></tr></tbody></table></div></div></details>
+
+<h3 id="final">Final results</h3>
+<p>Everything combined, with one fixed set of parameters for all 18 course plates and my 6 own plates:
+edge features (B1) → rotation + scale + shift (B6) → auto-crop (B2) → gray-world white balance at half strength (B4) → auto-contrast (B3).
+Drag across each image to compare the basic NCC pyramid result (left) with the final result (right).</p>
+<h4>Course plates (18)</h4>
+<div class="compare-grid">
+<figure class="compare" style="--pos: 50%">
+  <div class="compare-frame">
+    <img src="results/images/thumbs/pyramid/ncc/01007a.jpg" alt="01007a before">
+    <img class="after" src="results/images/thumbs/final/01007a.jpg" alt="01007a after">
+    <span class="tag tag-l">before</span><span class="tag tag-r">after</span>
+    <input type="range" min="0" max="100" value="50" aria-label="Before / after slider for 01007a">
+  </div>
+  <figcaption><b>01007a</b></figcaption>
+</figure>
+<figure class="compare" style="--pos: 50%">
+  <div class="compare-frame">
+    <img src="results/images/thumbs/pyramid/ncc/01861a.jpg" alt="01861a before">
+    <img class="after" src="results/images/thumbs/final/01861a.jpg" alt="01861a after">
+    <span class="tag tag-l">before</span><span class="tag tag-r">after</span>
+    <input type="range" min="0" max="100" value="50" aria-label="Before / after slider for 01861a">
+  </div>
+  <figcaption><b>01861a</b></figcaption>
+</figure>
+<figure class="compare" style="--pos: 50%">
+  <div class="compare-frame">
+    <img src="results/images/thumbs/pyramid/ncc/00458u.jpg" alt="00458u before">
+    <img class="after" src="results/images/thumbs/final/00458u.jpg" alt="00458u after">
+    <span class="tag tag-l">before</span><span class="tag tag-r">after</span>
+    <input type="range" min="0" max="100" value="50" aria-label="Before / after slider for 00458u">
+  </div>
+  <figcaption><b>00458u</b></figcaption>
+</figure>
+<figure class="compare" style="--pos: 50%">
+  <div class="compare-frame">
+    <img src="results/images/thumbs/pyramid/ncc/01047u.jpg" alt="01047u before">
+    <img class="after" src="results/images/thumbs/final/01047u.jpg" alt="01047u after">
+    <span class="tag tag-l">before</span><span class="tag tag-r">after</span>
+    <input type="range" min="0" max="100" value="50" aria-label="Before / after slider for 01047u">
+  </div>
+  <figcaption><b>01047u</b></figcaption>
+</figure>
+<figure class="compare" style="--pos: 50%">
+  <div class="compare-frame">
+    <img src="results/images/thumbs/pyramid/ncc/01657u.jpg" alt="01657u before">
+    <img class="after" src="results/images/thumbs/final/01657u.jpg" alt="01657u after">
+    <span class="tag tag-l">before</span><span class="tag tag-r">after</span>
+    <input type="range" min="0" max="100" value="50" aria-label="Before / after slider for 01657u">
+  </div>
+  <figcaption><b>01657u</b></figcaption>
+</figure>
+<figure class="compare" style="--pos: 50%">
+  <div class="compare-frame">
+    <img src="results/images/thumbs/pyramid/ncc/01725u.jpg" alt="01725u before">
+    <img class="after" src="results/images/thumbs/final/01725u.jpg" alt="01725u after">
+    <span class="tag tag-l">before</span><span class="tag tag-r">after</span>
+    <input type="range" min="0" max="100" value="50" aria-label="Before / after slider for 01725u">
+  </div>
+  <figcaption><b>01725u</b></figcaption>
+</figure>
+<figure class="compare" style="--pos: 50%">
+  <div class="compare-frame">
+    <img src="results/images/thumbs/pyramid/ncc/00056v.jpg" alt="00056v before">
+    <img class="after" src="results/images/thumbs/final/00056v.jpg" alt="00056v after">
+    <span class="tag tag-l">before</span><span class="tag tag-r">after</span>
+    <input type="range" min="0" max="100" value="50" aria-label="Before / after slider for 00056v">
+  </div>
+  <figcaption><b>00056v</b></figcaption>
+</figure>
+<figure class="compare" style="--pos: 50%">
+  <div class="compare-frame">
+    <img src="results/images/thumbs/pyramid/ncc/00125v.jpg" alt="00125v before">
+    <img class="after" src="results/images/thumbs/final/00125v.jpg" alt="00125v after">
+    <span class="tag tag-l">before</span><span class="tag tag-r">after</span>
+    <input type="range" min="0" max="100" value="50" aria-label="Before / after slider for 00125v">
+  </div>
+  <figcaption><b>00125v</b></figcaption>
+</figure>
+<figure class="compare" style="--pos: 50%">
+  <div class="compare-frame">
+    <img src="results/images/thumbs/pyramid/ncc/00163v.jpg" alt="00163v before">
+    <img class="after" src="results/images/thumbs/final/00163v.jpg" alt="00163v after">
+    <span class="tag tag-l">before</span><span class="tag tag-r">after</span>
+    <input type="range" min="0" max="100" value="50" aria-label="Before / after slider for 00163v">
+  </div>
+  <figcaption><b>00163v</b></figcaption>
+</figure>
+<figure class="compare" style="--pos: 50%">
+  <div class="compare-frame">
+    <img src="results/images/thumbs/pyramid/ncc/00804v.jpg" alt="00804v before">
+    <img class="after" src="results/images/thumbs/final/00804v.jpg" alt="00804v after">
+    <span class="tag tag-l">before</span><span class="tag tag-r">after</span>
+    <input type="range" min="0" max="100" value="50" aria-label="Before / after slider for 00804v">
+  </div>
+  <figcaption><b>00804v</b></figcaption>
+</figure>
+<figure class="compare" style="--pos: 50%">
+  <div class="compare-frame">
+    <img src="results/images/thumbs/pyramid/ncc/01164v.jpg" alt="01164v before">
+    <img class="after" src="results/images/thumbs/final/01164v.jpg" alt="01164v after">
+    <span class="tag tag-l">before</span><span class="tag tag-r">after</span>
+    <input type="range" min="0" max="100" value="50" aria-label="Before / after slider for 01164v">
+  </div>
+  <figcaption><b>01164v</b></figcaption>
+</figure>
+<figure class="compare" style="--pos: 50%">
+  <div class="compare-frame">
+    <img src="results/images/thumbs/pyramid/ncc/01269v.jpg" alt="01269v before">
+    <img class="after" src="results/images/thumbs/final/01269v.jpg" alt="01269v after">
+    <span class="tag tag-l">before</span><span class="tag tag-r">after</span>
+    <input type="range" min="0" max="100" value="50" aria-label="Before / after slider for 01269v">
+  </div>
+  <figcaption><b>01269v</b></figcaption>
+</figure>
+<figure class="compare" style="--pos: 50%">
+  <div class="compare-frame">
+    <img src="results/images/thumbs/pyramid/ncc/01522v.jpg" alt="01522v before">
+    <img class="after" src="results/images/thumbs/final/01522v.jpg" alt="01522v after">
+    <span class="tag tag-l">before</span><span class="tag tag-r">after</span>
+    <input type="range" min="0" max="100" value="50" aria-label="Before / after slider for 01522v">
+  </div>
+  <figcaption><b>01522v</b></figcaption>
+</figure>
+<figure class="compare" style="--pos: 50%">
+  <div class="compare-frame">
+    <img src="results/images/thumbs/pyramid/ncc/01597v.jpg" alt="01597v before">
+    <img class="after" src="results/images/thumbs/final/01597v.jpg" alt="01597v after">
+    <span class="tag tag-l">before</span><span class="tag tag-r">after</span>
+    <input type="range" min="0" max="100" value="50" aria-label="Before / after slider for 01597v">
+  </div>
+  <figcaption><b>01597v</b></figcaption>
+</figure>
+<figure class="compare" style="--pos: 50%">
+  <div class="compare-frame">
+    <img src="results/images/thumbs/pyramid/ncc/01598v.jpg" alt="01598v before">
+    <img class="after" src="results/images/thumbs/final/01598v.jpg" alt="01598v after">
+    <span class="tag tag-l">before</span><span class="tag tag-r">after</span>
+    <input type="range" min="0" max="100" value="50" aria-label="Before / after slider for 01598v">
+  </div>
+  <figcaption><b>01598v</b></figcaption>
+</figure>
+<figure class="compare" style="--pos: 50%">
+  <div class="compare-frame">
+    <img src="results/images/thumbs/pyramid/ncc/01728v.jpg" alt="01728v before">
+    <img class="after" src="results/images/thumbs/final/01728v.jpg" alt="01728v after">
+    <span class="tag tag-l">before</span><span class="tag tag-r">after</span>
+    <input type="range" min="0" max="100" value="50" aria-label="Before / after slider for 01728v">
+  </div>
+  <figcaption><b>01728v</b></figcaption>
+</figure>
+<figure class="compare" style="--pos: 50%">
+  <div class="compare-frame">
+    <img src="results/images/thumbs/pyramid/ncc/10131v.jpg" alt="10131v before">
+    <img class="after" src="results/images/thumbs/final/10131v.jpg" alt="10131v after">
+    <span class="tag tag-l">before</span><span class="tag tag-r">after</span>
+    <input type="range" min="0" max="100" value="50" aria-label="Before / after slider for 10131v">
+  </div>
+  <figcaption><b>10131v</b></figcaption>
+</figure>
+<figure class="compare" style="--pos: 50%">
+  <div class="compare-frame">
+    <img src="results/images/thumbs/pyramid/ncc/31421v.jpg" alt="31421v before">
+    <img class="after" src="results/images/thumbs/final/31421v.jpg" alt="31421v after">
+    <span class="tag tag-l">before</span><span class="tag tag-r">after</span>
+    <input type="range" min="0" max="100" value="50" aria-label="Before / after slider for 31421v">
+  </div>
+  <figcaption><b>31421v</b></figcaption>
+</figure>
+</div>
+<!-- generated:final_own start (report.py) -->
+<h4>My own plates (6)</h4>
+<div class="compare-grid">
+<figure class="compare" style="--pos: 50%">
+  <div class="compare-frame">
+    <img src="results/images/thumbs/own/full/ncc/00153a.jpg" alt="00153a before">
+    <img class="after" src="results/images/thumbs/final/own/00153a.jpg" alt="00153a after">
+    <span class="tag tag-l">before</span><span class="tag tag-r">after</span>
+    <input type="range" min="0" max="100" value="50" aria-label="Before / after slider for 00153a">
+  </div>
+  <figcaption><b>00153a</b></figcaption>
+</figure>
+<figure class="compare" style="--pos: 50%">
+  <div class="compare-frame">
+    <img src="results/images/thumbs/own/full/ncc/00166a.jpg" alt="00166a before">
+    <img class="after" src="results/images/thumbs/final/own/00166a.jpg" alt="00166a after">
+    <span class="tag tag-l">before</span><span class="tag tag-r">after</span>
+    <input type="range" min="0" max="100" value="50" aria-label="Before / after slider for 00166a">
+  </div>
+  <figcaption><b>00166a</b></figcaption>
+</figure>
+<figure class="compare" style="--pos: 50%">
+  <div class="compare-frame">
+    <img src="results/images/thumbs/own/full/ncc/00169a.jpg" alt="00169a before">
+    <img class="after" src="results/images/thumbs/final/own/00169a.jpg" alt="00169a after">
+    <span class="tag tag-l">before</span><span class="tag tag-r">after</span>
+    <input type="range" min="0" max="100" value="50" aria-label="Before / after slider for 00169a">
+  </div>
+  <figcaption><b>00169a</b></figcaption>
+</figure>
+<figure class="compare" style="--pos: 50%">
+  <div class="compare-frame">
+    <img src="results/images/thumbs/own/full/ncc/00170a.jpg" alt="00170a before">
+    <img class="after" src="results/images/thumbs/final/own/00170a.jpg" alt="00170a after">
+    <span class="tag tag-l">before</span><span class="tag tag-r">after</span>
+    <input type="range" min="0" max="100" value="50" aria-label="Before / after slider for 00170a">
+  </div>
+  <figcaption><b>00170a</b></figcaption>
+</figure>
+<figure class="compare" style="--pos: 50%">
+  <div class="compare-frame">
+    <img src="results/images/thumbs/own/full/ncc/00212a.jpg" alt="00212a before">
+    <img class="after" src="results/images/thumbs/final/own/00212a.jpg" alt="00212a after">
+    <span class="tag tag-l">before</span><span class="tag tag-r">after</span>
+    <input type="range" min="0" max="100" value="50" aria-label="Before / after slider for 00212a">
+  </div>
+  <figcaption><b>00212a</b></figcaption>
+</figure>
+<figure class="compare" style="--pos: 50%">
+  <div class="compare-frame">
+    <img src="results/images/thumbs/own/full/ncc/00171u.jpg" alt="00171u before">
+    <img class="after" src="results/images/thumbs/final/own/00171u.jpg" alt="00171u after">
+    <span class="tag tag-l">before</span><span class="tag tag-r">after</span>
+    <input type="range" min="0" max="100" value="50" aria-label="Before / after slider for 00171u">
+  </div>
+  <figcaption><b>00171u</b></figcaption>
+</figure>
+</div>
+<!-- generated:final_own end -->
+
+<h3 id="summary">Summary</h3>
+<ul>
+  <li><b>Metric and parameters:</b> NCC on the interior (10% trimmed per side); single-scale window ±20;
+      pyramid down to ≤ 400 px, ±20 at the coarsest level, ±2 refinement per level;
+      Gaussian (σ = 1) downsampling.</li>
+  <li><b>Results:</b> NCC aligns 18 / 18 course plates, L2 aligns 17 / 18. The slowest plate takes 0.6 s per metric for the pyramid, and a full-size plate takes about 3 s through the full final pipeline (mostly the B6 rotation / scale search).</li>
+  <li><b>Failures:</b> 01725u with L2 (brightness mismatch between channels, decided at the coarsest level; fixed by edges);
+      my own choice 00153a at full size with both metrics (fixed by edges); my own choice 00170a with every method
+      (almost no texture, horizon only).</li>
+  <li><b>Bells &amp; whistles:</b> edge features, automatic cropping, automatic contrast, white balance, color mapping, rotation and scale.</li>
+</ul>
+</section>
+</main>
+</div>
+
+<footer>SYDE 671 · University of Waterloo · Images: Prokudin-Gorskii Collection, Library of Congress</footer>
+
+<script>
+// Before / after sliders
+document.querySelectorAll(".compare").forEach(card => {
+  const input = card.querySelector("input");
+  input.addEventListener("input", () => card.style.setProperty("--pos", input.value + "%"));
+});
+// Open collapsed sections when printing, so the PDF contains everything
+window.addEventListener("beforeprint", () => document.querySelectorAll("details").forEach(d => d.open = true));
+// Highlight the current section in the table of contents
+const links = [...document.querySelectorAll("nav.toc a")];
+const targets = links.map(a => document.querySelector(a.getAttribute("href"))).filter(Boolean);
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      links.forEach(a => a.classList.toggle("active", a.getAttribute("href") === "#" + e.target.id));
+    }
+  });
+}, { rootMargin: "0px 0px -75% 0px" });
+targets.forEach(t => observer.observe(t));
+</script>
 </body>
 </html>
