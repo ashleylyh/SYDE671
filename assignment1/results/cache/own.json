@@ -1,0 +1,398 @@
+{
+ "params": {
+  "window": 20,
+  "frac": 0.1,
+  "pyr_min_size": 400,
+  "coarse_window": 20,
+  "refine_window": 2,
+  "wb_strength": 0.5,
+  "color_strength": 5.0,
+  "angles": [
+   -0.6,
+   -0.5,
+   -0.4,
+   -0.3,
+   -0.2,
+   -0.1,
+   -0.0,
+   0.1,
+   0.2,
+   0.3,
+   0.4,
+   0.5,
+   0.6
+  ],
+  "scales": [
+   0.99,
+   0.995,
+   1.0,
+   1.005,
+   1.01
+  ],
+  "b6_sigma": 2.0,
+  "lowres_height": 1024,
+  "web_max_side": 1600
+ },
+ "results": [
+  {
+   "name": "master-pnp-prok-00100-00153a",
+   "version": "low-res",
+   "channel_shape": 403,
+   "metric": "l2",
+   "G": [
+    3,
+    9
+   ],
+   "R": [
+    20,
+    18
+   ],
+   "time_s": 0.42
+  },
+  {
+   "name": "master-pnp-prok-00100-00153a",
+   "version": "low-res",
+   "channel_shape": 403,
+   "metric": "ncc",
+   "G": [
+    3,
+    9
+   ],
+   "R": [
+    6,
+    17
+   ],
+   "time_s": 0.37
+  },
+  {
+   "name": "master-pnp-prok-00100-00153a",
+   "version": "full",
+   "channel_shape": 3223,
+   "metric": "l2",
+   "G": [
+    25,
+    69
+   ],
+   "R": [
+    275,
+    -210
+   ],
+   "time_s": 0.57
+  },
+  {
+   "name": "master-pnp-prok-00100-00153a",
+   "version": "full",
+   "channel_shape": 3223,
+   "metric": "ncc",
+   "G": [
+    25,
+    69
+   ],
+   "R": [
+    -194,
+    312
+   ],
+   "time_s": 0.56
+  },
+  {
+   "name": "master-pnp-prok-00100-00166a",
+   "version": "low-res",
+   "channel_shape": 402,
+   "metric": "l2",
+   "G": [
+    2,
+    3
+   ],
+   "R": [
+    5,
+    15
+   ],
+   "time_s": 0.42
+  },
+  {
+   "name": "master-pnp-prok-00100-00166a",
+   "version": "low-res",
+   "channel_shape": 402,
+   "metric": "ncc",
+   "G": [
+    2,
+    3
+   ],
+   "R": [
+    5,
+    15
+   ],
+   "time_s": 0.38
+  },
+  {
+   "name": "master-pnp-prok-00100-00166a",
+   "version": "full",
+   "channel_shape": 3218,
+   "metric": "l2",
+   "G": [
+    18,
+    26
+   ],
+   "R": [
+    35,
+    121
+   ],
+   "time_s": 0.59
+  },
+  {
+   "name": "master-pnp-prok-00100-00166a",
+   "version": "full",
+   "channel_shape": 3218,
+   "metric": "ncc",
+   "G": [
+    18,
+    26
+   ],
+   "R": [
+    35,
+    121
+   ],
+   "time_s": 0.59
+  },
+  {
+   "name": "master-pnp-prok-00100-00169a",
+   "version": "low-res",
+   "channel_shape": 403,
+   "metric": "l2",
+   "G": [
+    -5,
+    9
+   ],
+   "R": [
+    -8,
+    14
+   ],
+   "time_s": 0.41
+  },
+  {
+   "name": "master-pnp-prok-00100-00169a",
+   "version": "low-res",
+   "channel_shape": 403,
+   "metric": "ncc",
+   "G": [
+    -5,
+    9
+   ],
+   "R": [
+    -8,
+    14
+   ],
+   "time_s": 0.37
+  },
+  {
+   "name": "master-pnp-prok-00100-00169a",
+   "version": "full",
+   "channel_shape": 3224,
+   "metric": "l2",
+   "G": [
+    -41,
+    75
+   ],
+   "R": [
+    -68,
+    114
+   ],
+   "time_s": 0.57
+  },
+  {
+   "name": "master-pnp-prok-00100-00169a",
+   "version": "full",
+   "channel_shape": 3224,
+   "metric": "ncc",
+   "G": [
+    -41,
+    75
+   ],
+   "R": [
+    -68,
+    114
+   ],
+   "time_s": 0.56
+  },
+  {
+   "name": "master-pnp-prok-00100-00170a",
+   "version": "low-res",
+   "channel_shape": 407,
+   "metric": "l2",
+   "G": [
+    0,
+    5
+   ],
+   "R": [
+    -10,
+    -6
+   ],
+   "time_s": 0.43
+  },
+  {
+   "name": "master-pnp-prok-00100-00170a",
+   "version": "low-res",
+   "channel_shape": 407,
+   "metric": "ncc",
+   "G": [
+    2,
+    6
+   ],
+   "R": [
+    2,
+    0
+   ],
+   "time_s": 0.38
+  },
+  {
+   "name": "master-pnp-prok-00100-00170a",
+   "version": "full",
+   "channel_shape": 3257,
+   "metric": "l2",
+   "G": [
+    8,
+    43
+   ],
+   "R": [
+    -78,
+    -45
+   ],
+   "time_s": 0.59
+  },
+  {
+   "name": "master-pnp-prok-00100-00170a",
+   "version": "full",
+   "channel_shape": 3257,
+   "metric": "ncc",
+   "G": [
+    14,
+    52
+   ],
+   "R": [
+    23,
+    5
+   ],
+   "time_s": 0.55
+  },
+  {
+   "name": "master-pnp-prok-00200-00212a",
+   "version": "low-res",
+   "channel_shape": 407,
+   "metric": "l2",
+   "G": [
+    -1,
+    6
+   ],
+   "R": [
+    -2,
+    14
+   ],
+   "time_s": 0.43
+  },
+  {
+   "name": "master-pnp-prok-00200-00212a",
+   "version": "low-res",
+   "channel_shape": 407,
+   "metric": "ncc",
+   "G": [
+    -1,
+    6
+   ],
+   "R": [
+    -2,
+    14
+   ],
+   "time_s": 0.38
+  },
+  {
+   "name": "master-pnp-prok-00200-00212a",
+   "version": "full",
+   "channel_shape": 3254,
+   "metric": "l2",
+   "G": [
+    -9,
+    48
+   ],
+   "R": [
+    -15,
+    111
+   ],
+   "time_s": 0.57
+  },
+  {
+   "name": "master-pnp-prok-00200-00212a",
+   "version": "full",
+   "channel_shape": 3254,
+   "metric": "ncc",
+   "G": [
+    -9,
+    48
+   ],
+   "R": [
+    -15,
+    111
+   ],
+   "time_s": 0.58
+  },
+  {
+   "name": "master-pnp-prok-00100-00171u",
+   "version": "low-res",
+   "channel_shape": 406,
+   "metric": "l2",
+   "G": [
+    -1,
+    6
+   ],
+   "R": [
+    -3,
+    12
+   ],
+   "time_s": 0.44
+  },
+  {
+   "name": "master-pnp-prok-00100-00171u",
+   "version": "low-res",
+   "channel_shape": 406,
+   "metric": "ncc",
+   "G": [
+    -1,
+    6
+   ],
+   "R": [
+    -3,
+    12
+   ],
+   "time_s": 0.38
+  },
+  {
+   "name": "master-pnp-prok-00100-00171u",
+   "version": "full",
+   "channel_shape": 3250,
+   "metric": "l2",
+   "G": [
+    -6,
+    49
+   ],
+   "R": [
+    -25,
+    96
+   ],
+   "time_s": 0.61
+  },
+  {
+   "name": "master-pnp-prok-00100-00171u",
+   "version": "full",
+   "channel_shape": 3250,
+   "metric": "ncc",
+   "G": [
+    -6,
+    49
+   ],
+   "R": [
+    -25,
+    96
+   ],
+   "time_s": 0.58
+  }
+ ]
+}

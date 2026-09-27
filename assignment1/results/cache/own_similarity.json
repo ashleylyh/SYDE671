@@ -1,0 +1,230 @@
+{
+ "params": {
+  "window": 20,
+  "frac": 0.1,
+  "pyr_min_size": 400,
+  "coarse_window": 20,
+  "refine_window": 2,
+  "wb_strength": 0.5,
+  "color_strength": 5.0,
+  "angles": [
+   -0.6,
+   -0.5,
+   -0.4,
+   -0.3,
+   -0.2,
+   -0.1,
+   -0.0,
+   0.1,
+   0.2,
+   0.3,
+   0.4,
+   0.5,
+   0.6
+  ],
+  "scales": [
+   0.99,
+   0.995,
+   1.0,
+   1.005,
+   1.01
+  ],
+  "b6_sigma": 2.0,
+  "lowres_height": 1024,
+  "web_max_side": 1600
+ },
+ "results": [
+  {
+   "name": "master-pnp-prok-00100-00153a",
+   "channel": "G",
+   "transform": {
+    "dx": 24,
+    "dy": 68,
+    "angle": 0.2,
+    "scale": 1.005
+   },
+   "translation_only": [
+    24,
+    70
+   ],
+   "score_before": 0.824454128742218,
+   "score_after": 0.8421651124954224
+  },
+  {
+   "name": "master-pnp-prok-00100-00153a",
+   "channel": "R",
+   "transform": {
+    "dx": 40,
+    "dy": 141,
+    "angle": 0.2,
+    "scale": 1.0
+   },
+   "translation_only": [
+    39,
+    142
+   ],
+   "score_before": 0.8232367634773254,
+   "score_after": 0.8289126753807068
+  },
+  {
+   "name": "master-pnp-prok-00100-00166a",
+   "channel": "G",
+   "transform": {
+    "dx": 17,
+    "dy": 27,
+    "angle": -0.1,
+    "scale": 1.0
+   },
+   "translation_only": [
+    18,
+    26
+   ],
+   "score_before": 0.8773355484008789,
+   "score_after": 0.8713021874427795
+  },
+  {
+   "name": "master-pnp-prok-00100-00166a",
+   "channel": "R",
+   "transform": {
+    "dx": 36,
+    "dy": 121,
+    "angle": 0.2,
+    "scale": 1.0
+   },
+   "translation_only": [
+    34,
+    122
+   ],
+   "score_before": 0.8508615493774414,
+   "score_after": 0.8526753187179565
+  },
+  {
+   "name": "master-pnp-prok-00100-00169a",
+   "channel": "G",
+   "transform": {
+    "dx": -42,
+    "dy": 74,
+    "angle": 0.1,
+    "scale": 1.0
+   },
+   "translation_only": [
+    -41,
+    75
+   ],
+   "score_before": 0.9480738639831543,
+   "score_after": 0.9420374035835266
+  },
+  {
+   "name": "master-pnp-prok-00100-00169a",
+   "channel": "R",
+   "transform": {
+    "dx": -65,
+    "dy": 112,
+    "angle": -0.0,
+    "scale": 0.995
+   },
+   "translation_only": [
+    -68,
+    114
+   ],
+   "score_before": 0.9056754112243652,
+   "score_after": 0.9111488461494446
+  },
+  {
+   "name": "master-pnp-prok-00100-00170a",
+   "channel": "G",
+   "transform": {
+    "dx": -48,
+    "dy": 50,
+    "angle": -0.2,
+    "scale": 1.0
+   },
+   "translation_only": [
+    -46,
+    51
+   ],
+   "score_before": 0.891067624092102,
+   "score_after": 0.8896432518959045
+  },
+  {
+   "name": "master-pnp-prok-00100-00170a",
+   "channel": "R",
+   "transform": {
+    "dx": -166,
+    "dy": -118,
+    "angle": -0.3,
+    "scale": 1.01
+   },
+   "translation_only": [
+    -175,
+    -117
+   ],
+   "score_before": 0.8696290850639343,
+   "score_after": 0.871067464351654
+  },
+  {
+   "name": "master-pnp-prok-00200-00212a",
+   "channel": "G",
+   "transform": {
+    "dx": -9,
+    "dy": 48,
+    "angle": -0.0,
+    "scale": 1.005
+   },
+   "translation_only": [
+    -9,
+    48
+   ],
+   "score_before": 0.895200788974762,
+   "score_after": 0.9439706802368164
+  },
+  {
+   "name": "master-pnp-prok-00200-00212a",
+   "channel": "R",
+   "transform": {
+    "dx": -15,
+    "dy": 111,
+    "angle": 0.1,
+    "scale": 1.005
+   },
+   "translation_only": [
+    -15,
+    111
+   ],
+   "score_before": 0.8799078464508057,
+   "score_after": 0.8930179476737976
+  },
+  {
+   "name": "master-pnp-prok-00100-00171u",
+   "channel": "G",
+   "transform": {
+    "dx": -4,
+    "dy": 48,
+    "angle": -0.0,
+    "scale": 1.005
+   },
+   "translation_only": [
+    -6,
+    49
+   ],
+   "score_before": 0.8710477948188782,
+   "score_after": 0.8970402479171753
+  },
+  {
+   "name": "master-pnp-prok-00100-00171u",
+   "channel": "R",
+   "transform": {
+    "dx": -24,
+    "dy": 97,
+    "angle": 0.2,
+    "scale": 1.0
+   },
+   "translation_only": [
+    -25,
+    96
+   ],
+   "score_before": 0.8916010856628418,
+   "score_after": 0.9214823842048645
+  }
+ ]
+}

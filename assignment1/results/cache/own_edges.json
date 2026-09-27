@@ -1,0 +1,64 @@
+{
+ "params": {
+  "window": 20,
+  "frac": 0.1,
+  "pyr_min_size": 400,
+  "coarse_window": 20,
+  "refine_window": 2,
+  "wb_strength": 0.5,
+  "color_strength": 5.0,
+  "angles": [
+   -0.6,
+   -0.5,
+   -0.4,
+   -0.3,
+   -0.2,
+   -0.1,
+   -0.0,
+   0.1,
+   0.2,
+   0.3,
+   0.4,
+   0.5,
+   0.6
+  ],
+  "scales": [
+   0.99,
+   0.995,
+   1.0,
+   1.005,
+   1.01
+  ],
+  "b6_sigma": 2.0,
+  "lowres_height": 1024,
+  "web_max_side": 1600
+ },
+ "results": [
+  {
+   "name": "master-pnp-prok-00100-00153a",
+   "metric": "l2",
+   "G": [
+    24,
+    70
+   ],
+   "R": [
+    39,
+    142
+   ],
+   "time_s": 0.9
+  },
+  {
+   "name": "master-pnp-prok-00100-00153a",
+   "metric": "ncc",
+   "G": [
+    24,
+    70
+   ],
+   "R": [
+    39,
+    142
+   ],
+   "time_s": 0.89
+  }
+ ]
+}
