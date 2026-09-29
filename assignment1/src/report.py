@@ -322,8 +322,22 @@ class Report:
         head = "".join(f"<th>{c.split()[0]} {c.split()[1]} {c.split()[2].upper()}</th>" for c in cols)
         rows = "".join(f'<tr class="{"fixed" if n == FAIL else ""}"><td>{n}</td>'
                        + "".join(f"<td>{_off(row[c])}</td>" for c in cols) + "</tr>" for n, row in table.iterrows())
+        # Short summary shown at the top of the toggle
+        def gap(a, b):
+            return max(abs(a[0] - b[0]), abs(a[1] - b[1]))
+        gaps = {n: max(gap(row[f"{ch} raw ncc"], row[f"{ch} edges ncc"]) for ch in "GR") for n, row in table.iterrows()}
+        same = [n for n, g in gaps.items() if g == 0]
+        moved = sorted(((g, n) for n, g in gaps.items() if g >= 2), reverse=True)
+        fail = table.loc[FAIL]
+        summary = (
+            f"<p><b>Summary.</b> Edges give exactly the same offsets as raw-pixel NCC on {len(same)} of {len(table)} plates, "
+            f"and within 1 px on all but {len(moved)} "
+            f"({', '.join(f'{n}, up to {g} px' for g, n in moved)}; these plates are slightly rotated and scaled, see B6). "
+            f"The row that matters is {FAIL}: raw L2 gives R {_off(fail['R raw l2'])}, edges give R "
+            f"{_off(fail['R edges l2'])}, within 1 px of NCC. So edges keep every good result and fix the one failure.</p>\n")
         self.html["b1_table"] = (
             f'<details><summary>Show edge-based offsets for all {len(table)} plates</summary><div>\n'
+            + summary +
             f'<div class="table-wrap"><table class=""><thead><tr><th>Plate</th>{head}</tr></thead>'
             f"<tbody>{rows}</tbody></table></div>\n"
             '<div class="legend"><span class="l-fixed">fixed by edges</span></div></div></details>')
@@ -361,8 +375,8 @@ class Report:
             f"<h4>My own plate {plate}</h4>",
             f"<p>On the full-size plate, the pyramid on raw pixels misaligns R with both metrics "
             f"(NCC {_off(raw_ncc['R'].offset)}, L2 {_off(raw_l2['R'].offset)}). The channels disagree about what is "
-            "bright: in R the robe is much darker than the wall behind it, while in B the two are about equally bright, "
-            "so the raw brightness patterns don't match. "
+            "bright: the robe is pale in B but dark in R, so the raw brightness patterns don't match "
+            '(see <a href="#own">the analysis above</a>). '
             f"On edges, {on_edges}, close to the low-res single-scale offset scaled up, "
             f"R {_off(low)} × {factor} = {_off((low[0] * factor, low[1] * factor))}.</p>",
             card,

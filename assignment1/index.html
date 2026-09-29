@@ -180,7 +180,7 @@ footer { border-top: 1px solid var(--border); color: var(--muted); font-size: 14
 
 <header class="hero">
   <a class="back" href="../">&larr; All assignments</a>
-  <div class="kicker">SYDE 671 · Introduction to Computer Vision / Advance Image Processing</div>
+  <div class="kicker">SYDE 671 · Introduction to Computer Vision / Advanced Image Processing</div>
   <h1>Assignment 1: Becoming friends with the camera & Colorizing the Russian Empire</h1>
   <div class="byline">Ashley Li</div>
   <!-- <p>Part one explores perspective, focal length and the center of projection with a phone camera.
@@ -402,6 +402,8 @@ pyramid can only double that mistake (see the <a href="#failure">failure analysi
 <!-- <p>To check the implementation, I also forced a 2-level pyramid on the 12 low-res plates and compared it with the
 single-scale search: <b>identical offsets on all 12</b>.</p>
 <details><summary>Show the pyramid vs. single-scale check</summary><div>
+<p><b>Summary.</b> The offset differences are 0 px on every plate: going coarse-to-fine and refining by ±2 px at the finer level
+finds exactly the same shift as the exhaustive search, so the pyramid saves time without losing accuracy.</p>
 <div class="table-wrap"><table class=""><thead><tr><th>Plate</th><th>G single</th><th>G pyramid</th><th>R single</th><th>R pyramid</th><th>diff (px)</th></tr></thead><tbody><tr><td>00056v</td><td>(1, 6)</td><td>(1, 6)</td><td>(1, 13)</td><td>(1, 13)</td><td>0</td></tr><tr><td>00125v</td><td>(2, 5)</td><td>(2, 5)</td><td>(1, 10)</td><td>(1, 10)</td><td>0</td></tr><tr><td>00163v</td><td>(1, -3)</td><td>(1, -3)</td><td>(1, -4)</td><td>(1, -4)</td><td>0</td></tr><tr><td>00804v</td><td>(-2, 6)</td><td>(-2, 6)</td><td>(-4, 13)</td><td>(-4, 13)</td><td>0</td></tr><tr><td>01164v</td><td>(2, 6)</td><td>(2, 6)</td><td>(3, 11)</td><td>(3, 11)</td><td>0</td></tr><tr><td>01269v</td><td>(2, 6)</td><td>(2, 6)</td><td>(3, 13)</td><td>(3, 13)</td><td>0</td></tr><tr><td>01522v</td><td>(2, 6)</td><td>(2, 6)</td><td>(2, 13)</td><td>(2, 13)</td><td>0</td></tr><tr><td>01597v</td><td>(1, 7)</td><td>(1, 7)</td><td>(1, 16)</td><td>(1, 16)</td><td>0</td></tr><tr><td>01598v</td><td>(0, 8)</td><td>(0, 8)</td><td>(-1, 16)</td><td>(-1, 16)</td><td>0</td></tr><tr><td>01728v</td><td>(1, 8)</td><td>(1, 8)</td><td>(1, 18)</td><td>(1, 18)</td><td>0</td></tr><tr><td>10131v</td><td>(2, 6)</td><td>(2, 6)</td><td>(3, 12)</td><td>(3, 12)</td><td>0</td></tr><tr><td>31421v</td><td>(0, 8)</td><td>(0, 8)</td><td>(0, 13)</td><td>(0, 13)</td><td>0</td></tr></tbody></table></div></div></details> -->
 
 <h4 id="all">Results: all 18 plates, L2 vs. NCC</h4>
@@ -452,17 +454,55 @@ same fixed-parameter pipeline: single-scale on the low-res version, the pyramid 
 <p>Four of the six align well: the farmhouse (00166a), the trees at dusk (00169a), the lilac bush (00171u) and the cathedral
 roof (00212a). Their low-res and full-size offsets agree after scaling by 8, within a few pixels
 (for example 00212a: R (-2, 14) × 8 = (-16, 112) vs. (-15, 111)).</p>
-<p><b>00153a</b> (a seated portrait in a large blue robe) aligns at low resolution, but on the full-size plate the pyramid misaligns
-R with both metrics. Aligning on edges fixes it; see <a href="#b1">B1</a>.</p>
-<div class="callout"><p><b>00170a (a sunset over water) fails with every method,</b> including the edge features of B1.
-The scene is almost entirely smooth sky and water, so there is very little structure for any metric to match. The strongest
-features are the horizon, a single horizontal line, and the red scan damage along the bottom of the plate, which is different on
-each exposure. The inconsistent offsets show it: R's shift is normally about double G's, but NCC gives G (14, 52) and R (23, 5),
-and on edges G (-46, 51) and R (-177, -118).</p></div>
+<h4>Why 00153a fails on raw pixels</h4>
+<p>00153a is the Emir of Bukhara, the plate the assignment itself singles out as needing "a cleverer metric". G aligns with both
+metrics; R does not: the pyramid returns (-194, 312) with NCC and (275, -210) with L2, both far from the true shift of about (39, 142).</p>
+<div class="wide"><figure class="plain"><a href="results/images/failure/own_00153a_channels.jpg" target="_blank" rel="noopener"><img src="results/images/thumbs/failure/own_00153a_channels.jpg" alt="00153a, B and R channels: the robe is pale in B and dark in R"></a><figcaption><b>00153a, B vs. R</b> the robe is pale with dark leaves in B, but dark with pale flowers in R: the pattern is inverted.</figcaption></figure></div>
+<ol class="steps">
+  <li><b>The robe is inverted between channels.</b> The robe takes up much of the image, and where B is bright, R is dark.
+      Even at the correct shift, the raw R and B channels barely match: their zero-mean correlation is 0.27, compared with 0.73
+      for G and B on the same plate. NCC and L2 are looking for matching brightness, and here there isn't much.</li>
+  <li><b>At the coarsest level it is a coin toss.</b> At 202 × 233 px, NCC's score surface has two almost equal peaks: the
+      wrong shift (-12, 19) scores 0.9592 and the right one (≈ (2, 9) at this scale) scores 0.9579. The surface is nearly flat:
+      moving 5 px away from the peak changes the score by only about 2% of its range, compared with about 10% on 00166a, which aligns
+      fine. NCC's pick also sits at dy = 19, one pixel from the edge of the ±20 window: the same warning sign as 01725u.</li>
+  <li><b>Unlike 01725u, the pyramid isn't the real problem.</b> For 01725u, full-resolution L2 preferred the right answer and the
+      pyramid never tested it. Here raw NCC prefers the wrong shift at every scale: at full size it scores
+      0.9471 vs. 0.9457 for the correct (39, 142), and at 1/8 size 0.9545 vs. 0.9535.</li>
+  <li><b>So why does the low-res version work?</b> Luck. My low-res version is 1/8 size, where the wrong peak lies at (-24, 39),
+      outside the ±20 search window, so single-scale NCC can't reach it and settles on (6, 17). Low-res L2 already goes wrong:
+      R (20, 18), on the edge of the window.</li>
+</ol>
+<p>Since the metric itself prefers the wrong answer, a better search can't fix it; better features can. Edge strength
+doesn't care whether a leaf is darker or lighter than the cloth around it, only where the boundary is. On edge maps, both metrics
+give R (39, 142) (see <a href="#b1">B1</a>).</p>
+
+<h4>Why 00170a fails with every method</h4>
+<p>A sunset over water fails with L2, NCC and the edge features of B1, and the offsets don't agree with each other: NCC gives
+G (14, 52), R (23, 5); L2 gives G (8, 43), R (-78, -45); edges give G (-46, 51), R (-177, -118). On every other plate R's shift is
+roughly double G's, so R (23, 5) against G (14, 52) is already a sign that R is wrong.</p>
+<div class="wide"><figure class="plain"><a href="results/images/failure/own_00170a_sun.jpg" target="_blank" rel="noopener"><img src="results/images/thumbs/failure/own_00170a_sun.jpg" alt="00170a, the sun and horizon in B, G and R"></a><figcaption><b>00170a, each channel cropped around its own horizon</b> the sun sits at a different height above the horizon in each exposure, and R has a large halo.</figcaption></figure></div>
+<ol class="steps">
+  <li><b>There is almost nothing to match.</b> Sky and water are smooth gradients. The only strong structure is the horizon, and a
+      horizontal line only fixes the <em>vertical</em> shift: slide it left or right and it still matches. At the coarsest level,
+      moving 5 px sideways from NCC's pick changes the score by only 0.2–0.4% of its range (about 8–10% on 00166a), so dx is
+      basically a guess.</li>
+  <li><b>The scene moved between exposures.</b> The sun was setting while the three exposures were taken: relative to the
+      horizon it is half below it in B, just above it in G and 36 px above it in R. The waves moved too. So no single shift can
+      align the whole picture. For R, lining up the horizon needs dy ≈ 90, and lining up the sun needs dy ≈ 127. The translation
+      model assumes the scene stays still, and here it didn't.</li>
+  <li><b>What the metrics latch onto instead.</b> G's NCC result, dy = 52, matches the horizon (dy ≈ 53), so G is roughly right
+      vertically. R's NCC result, dy = 5, matches neither the horizon nor the sun: R is dominated by the bright halo and the sky
+      gradient, which look similar at many shifts.</li>
+  <li><b>Edges don't help.</b> Edge maps of a smooth scene are mostly dust, scratches and noise, and these differ on each
+      exposure. Even at the edge method's own best shift, R and B edges correlate at only 0.07 (0.50 on 00153a).</li>
+</ol>
+<p>I kept the fixed parameters rather than tuning for this plate. A plate-specific fix, such as aligning on the horizon band only,
+would line up the sea, but the sun would still show as separate colored disks.</p>
 
 <!-- ================================================================ BELLS & WHISTLES -->
 <h2 id="bells"><span class="part">Bells &amp; whistles</span>Beyond basic alignment</h2>
-<p class="lead">The alignments using NCC and L2 above already looks good, but it's far from the hand-restored versions. These extras make it
+<p class="lead">The alignments using NCC and L2 above already look good, but it's far from the hand-restored versions. These extras make it
 more robust and closer to a finished photograph. Libraries used here: <code>scipy.ndimage</code> for the Sobel filter, Gaussian blur and
 the rotation / scaling warp.</p>
 
@@ -475,12 +515,13 @@ instead of the raw pixels.</p>
 <p>With edges, <b>L2 now aligns 01725u</b> and L2 and NCC agree on 17 of 18 plates (the last differs by 1 px). Edges also move a few offsets compared with raw-pixel NCC, by up to 4 px on 00458u and 3 px on 01657u. Both plates have a slight rotation and scale difference between channels (B6 finds 0.1–0.3° and ×1.005), so no single shift fits the whole plate exactly; raw pixels and edges weight different parts of the image and settle on slightly different best shifts. The remaining misfit shows up as fringes near the corners, which B6 corrects (see the 00458u corner in <a href="#b6">B6</a>).</p>
 <!-- generated:b1_table start (report.py) -->
 <details><summary>Show edge-based offsets for all 18 plates</summary><div>
+<p><b>Summary.</b> Edges give exactly the same offsets as raw-pixel NCC on 13 of 18 plates, and within 1 px on all but 2 (00458u, up to 4 px, 01657u, up to 3 px; these plates are slightly rotated and scaled, see B6). The row that matters is 01725u: raw L2 gives R (-275, 323), edges give R (77, 162), within 1 px of NCC. So edges keep every good result and fix the one failure.</p>
 <div class="table-wrap"><table class=""><thead><tr><th>Plate</th><th>G raw L2</th><th>R raw L2</th><th>G raw NCC</th><th>R raw NCC</th><th>G edges L2</th><th>R edges L2</th><th>G edges NCC</th><th>R edges NCC</th></tr></thead><tbody><tr class=""><td>01007a</td><td>(14, 60)</td><td>(13, 129)</td><td>(14, 60)</td><td>(13, 129)</td><td>(14, 60)</td><td>(13, 129)</td><td>(14, 60)</td><td>(13, 129)</td></tr><tr class=""><td>01861a</td><td>(38, 71)</td><td>(62, 148)</td><td>(39, 71)</td><td>(63, 148)</td><td>(39, 71)</td><td>(62, 147)</td><td>(39, 71)</td><td>(62, 147)</td></tr><tr class=""><td>00458u</td><td>(6, 43)</td><td>(32, 87)</td><td>(6, 43)</td><td>(32, 87)</td><td>(2, 42)</td><td>(29, 85)</td><td>(2, 41)</td><td>(29, 85)</td></tr><tr class=""><td>01047u</td><td>(20, 24)</td><td>(33, 71)</td><td>(20, 24)</td><td>(33, 71)</td><td>(20, 25)</td><td>(33, 71)</td><td>(20, 25)</td><td>(33, 71)</td></tr><tr class=""><td>01657u</td><td>(8, 56)</td><td>(11, 116)</td><td>(8, 55)</td><td>(11, 117)</td><td>(9, 56)</td><td>(13, 120)</td><td>(9, 56)</td><td>(13, 120)</td></tr><tr class="fixed"><td>01725u</td><td>(44, 77)</td><td>(-275, 323)</td><td>(44, 77)</td><td>(77, 161)</td><td>(44, 76)</td><td>(77, 162)</td><td>(44, 76)</td><td>(77, 162)</td></tr><tr class=""><td>00056v</td><td>(1, 6)</td><td>(1, 13)</td><td>(1, 6)</td><td>(1, 13)</td><td>(1, 6)</td><td>(1, 13)</td><td>(1, 6)</td><td>(1, 13)</td></tr><tr class=""><td>00125v</td><td>(2, 5)</td><td>(1, 10)</td><td>(2, 5)</td><td>(1, 10)</td><td>(2, 5)</td><td>(1, 10)</td><td>(2, 5)</td><td>(1, 10)</td></tr><tr class=""><td>00163v</td><td>(1, -3)</td><td>(1, -4)</td><td>(1, -3)</td><td>(1, -4)</td><td>(1, -3)</td><td>(1, -4)</td><td>(1, -3)</td><td>(1, -4)</td></tr><tr class=""><td>00804v</td><td>(-2, 6)</td><td>(-4, 13)</td><td>(-2, 6)</td><td>(-4, 13)</td><td>(-2, 6)</td><td>(-4, 13)</td><td>(-2, 6)</td><td>(-4, 13)</td></tr><tr class=""><td>01164v</td><td>(2, 6)</td><td>(3, 11)</td><td>(2, 6)</td><td>(3, 11)</td><td>(2, 6)</td><td>(3, 11)</td><td>(2, 6)</td><td>(3, 11)</td></tr><tr class=""><td>01269v</td><td>(2, 6)</td><td>(3, 14)</td><td>(2, 6)</td><td>(3, 13)</td><td>(2, 6)</td><td>(3, 13)</td><td>(2, 6)</td><td>(3, 13)</td></tr><tr class=""><td>01522v</td><td>(2, 6)</td><td>(1, 13)</td><td>(2, 6)</td><td>(2, 13)</td><td>(2, 6)</td><td>(2, 13)</td><td>(2, 6)</td><td>(2, 13)</td></tr><tr class=""><td>01597v</td><td>(1, 7)</td><td>(1, 16)</td><td>(1, 7)</td><td>(1, 16)</td><td>(1, 7)</td><td>(1, 16)</td><td>(1, 7)</td><td>(1, 16)</td></tr><tr class=""><td>01598v</td><td>(0, 8)</td><td>(-1, 17)</td><td>(0, 8)</td><td>(-1, 16)</td><td>(0, 8)</td><td>(-1, 16)</td><td>(0, 8)</td><td>(-1, 16)</td></tr><tr class=""><td>01728v</td><td>(1, 8)</td><td>(1, 18)</td><td>(1, 8)</td><td>(1, 18)</td><td>(1, 8)</td><td>(1, 18)</td><td>(1, 8)</td><td>(1, 18)</td></tr><tr class=""><td>10131v</td><td>(2, 6)</td><td>(3, 12)</td><td>(2, 6)</td><td>(3, 12)</td><td>(2, 6)</td><td>(3, 12)</td><td>(2, 6)</td><td>(3, 12)</td></tr><tr class=""><td>31421v</td><td>(0, 8)</td><td>(0, 13)</td><td>(0, 8)</td><td>(0, 13)</td><td>(0, 8)</td><td>(0, 13)</td><td>(0, 8)</td><td>(0, 13)</td></tr></tbody></table></div>
 <div class="legend"><span class="l-fixed">fixed by edges</span></div></div></details>
 <!-- generated:b1_table end -->
 <!-- generated:b1_own start (report.py) -->
 <h4>My own plate 00153a</h4>
-<p>On the full-size plate, the pyramid on raw pixels misaligns R with both metrics (NCC (-194, 312), L2 (275, -210)). The channels disagree about what is bright: in R the robe is much darker than the wall behind it, while in B the two are about equally bright, so the raw brightness patterns don't match. On edges, L2 and NCC both give R (39, 142), close to the low-res single-scale offset scaled up, R (6, 17) × 8 = (48, 136).</p>
+<p>On the full-size plate, the pyramid on raw pixels misaligns R with both metrics (NCC (-194, 312), L2 (275, -210)). The channels disagree about what is bright: the robe is pale in B but dark in R, so the raw brightness patterns don't match (see <a href="#own">the analysis above</a>).On edges, L2 and NCC both give R (39, 142), close to the low-res single-scale offset scaled up, R (6, 17) × 8 = (48, 136).</p>
 <div class="metric-grid full"><figure class="metric-card" style="--n: 4"><div class="metric-pair"><a href="results/images/bells_whistles/b1_00153a_raw_l2.jpg" target="_blank" rel="noopener"><img src="results/images/thumbs/bells_whistles/b1_00153a_raw_l2.jpg" alt="00153a, raw · L2"><span class="tag tag-l">raw · L2</span></a><a href="results/images/bells_whistles/b1_00153a_raw_ncc.jpg" target="_blank" rel="noopener"><img src="results/images/thumbs/bells_whistles/b1_00153a_raw_ncc.jpg" alt="00153a, raw · NCC"><span class="tag tag-l">raw · NCC</span></a><a href="results/images/bells_whistles/b1_00153a_edges_l2.jpg" target="_blank" rel="noopener"><img src="results/images/thumbs/bells_whistles/b1_00153a_edges_l2.jpg" alt="00153a, edges · L2"><span class="tag tag-l">edges · L2</span></a><a href="results/images/bells_whistles/b1_00153a_edges_ncc.jpg" target="_blank" rel="noopener"><img src="results/images/thumbs/bells_whistles/b1_00153a_edges_ncc.jpg" alt="00153a, edges · NCC"><span class="tag tag-l">edges · NCC</span></a></div><figcaption><b>00153a</b><span class="mono">G (25, 69) · R (275, -210)</span><span class="mono">G (25, 69) · R (-194, 312)</span><span class="mono">G (24, 70) · R (39, 142)</span><span class="mono">G (24, 70) · R (39, 142)</span></figcaption></figure></div>
 <div class="table-wrap"><table class=""><thead><tr><th>Plate</th><th>G raw L2</th><th>R raw L2</th><th>G raw NCC</th><th>R raw NCC</th><th>G edges L2</th><th>R edges L2</th><th>G edges NCC</th><th>R edges NCC</th></tr></thead><tbody><tr class="fixed"><td>00153a</td><td>(25, 69)</td><td>(275, -210)</td><td>(25, 69)</td><td>(-194, 312)</td><td>(24, 70)</td><td>(39, 142)</td><td>(24, 70)</td><td>(39, 142)</td></tr></tbody></table></div>
 <div class="legend"><span class="l-fixed">fixed by edges</span></div>
@@ -507,6 +548,10 @@ around. Rather than cropping a fixed margin, the crop is detected per image:</p>
 disagree) also flagged white skies and colorful scenes, and cut into the pictures. <b>Limitation:</b> on 01047u, the straight front
 edge of the table looks like a border line, so about 8% extra is cropped at the bottom. On my own plate 00166a, part of the white plate border is left on the right and bottom (see the final results).</p>
 <details><summary>Show crop boxes for all 18 plates</summary><div>
+<p><b>Summary.</b> The crop keeps 81–88% of each plate (83% on a typical plate). The margins differ from plate to plate and from side
+to side: the left margin, for example, ranges from 68 px on 01047u to 260 px on 01861a. That's what expect from detecting each
+border, not from cutting a fixed margin. The smallest crop, 01047u (81%), is the one limitation noted above, where the edge of the
+table was taken for a border.</p>
 <div class="table-wrap"><table class=""><thead><tr><th>Plate</th><th>top / bottom / left / right</th><th>kept</th></tr></thead><tbody><tr><td>01007a</td><td>236 / 3238 / 220 / 3596</td><td>82%</td></tr><tr><td>01861a</td><td>156 / 3160 / 260 / 3588</td><td>83%</td></tr><tr><td>00458u</td><td>212 / 3212 / 184 / 3584</td><td>84%</td></tr><tr><td>01047u</td><td>160 / 2956 / 68 / 3548</td><td>81%</td></tr><tr><td>01657u</td><td>220 / 3184 / 184 / 3532</td><td>82%</td></tr><tr><td>01725u</td><td>164 / 3231 / 200 / 3612</td><td>87%</td></tr><tr><td>00056v</td><td>13 / 331 / 24 / 388</td><td>85%</td></tr><tr><td>00125v</td><td>26 / 339 / 27 / 383</td><td>82%</td></tr><tr><td>00163v</td><td>9 / 332 / 8 / 366</td><td>88%</td></tr><tr><td>00804v</td><td>21 / 341 / 21 / 375</td><td>84%</td></tr><tr><td>01164v</td><td>25 / 337 / 22 / 378</td><td>82%</td></tr><tr><td>01269v</td><td>27 / 341 / 25 / 382</td><td>83%</td></tr><tr><td>01522v</td><td>20 / 338 / 10 / 374</td><td>87%</td></tr><tr><td>01597v</td><td>18 / 330 / 26 / 378</td><td>82%</td></tr><tr><td>01598v</td><td>16 / 334 / 14 / 379</td><td>87%</td></tr><tr><td>01728v</td><td>27 / 341 / 20 / 373</td><td>82%</td></tr><tr><td>10131v</td><td>26 / 341 / 20 / 377</td><td>82%</td></tr><tr><td>31421v</td><td>14 / 341 / 20 / 377</td><td>86%</td></tr></tbody></table></div></div></details>
 
 <h3 id="b3">B3 · Automatic contrast</h3>
@@ -584,6 +629,11 @@ and scale changes (×0.99 to ×1.01), using the coarse-to-fine idea to keep it f
 On the full-size plates the edge NCC improves clearly (00458u G: 0.852 → 0.955); on the small plates
 it barely changes (at most +0.003). It takes about 2.8 s per full-size plate, which makes B6 the slowest step of the final pipeline (about 3 s per full-size plate in total).</p>
 <details><summary>Show rotation / scale for all 18 plates</summary><div>
+<p><b>Summary.</b> The corrections are tiny and always go the same way: every channel is rotated by 0° to +0.3° (never a negative
+angle) and scaled by ×1.000 to ×1.010 (never shrunk). A consistent direction suggests a real, systematic difference between the
+exposures rather than noise. Edge NCC improves on every full-size plate, by 0.008 to 0.10 (most on 00458u G, 0.852 → 0.955). On the
+low-res plates the gain is at most 0.003, because 0.3° moves a corner of a ≈ 390 px wide image by only about 1 px, while on a
+full-size plate it moves the corners by about 13 px. Re-running the shift search after the warp moves the offsets by at most 3 px.</p>
 <div class="table-wrap"><table class=""><thead><tr><th>Plate</th><th>G angle, scale</th><th>G edge NCC</th><th>R angle, scale</th><th>R edge NCC</th></tr></thead><tbody><tr><td>01007a</td><td>+0.1°, ×1.005</td><td>0.947 → 0.955</td><td>+0.2°, ×1.000</td><td>0.914 → 0.925</td></tr><tr><td>01861a</td><td>+0.1°, ×1.000</td><td>0.877 → 0.895</td><td>+0.3°, ×1.000</td><td>0.848 → 0.861</td></tr><tr><td>00458u</td><td>+0.3°, ×1.005</td><td>0.852 → 0.955</td><td>+0.2°, ×1.005</td><td>0.853 → 0.907</td></tr><tr><td>01047u</td><td>0.0°, ×1.005</td><td>0.904 → 0.944</td><td>+0.1°, ×1.005</td><td>0.908 → 0.926</td></tr><tr><td>01657u</td><td>+0.1°, ×1.005</td><td>0.921 → 0.938</td><td>0.0°, ×1.005</td><td>0.886 → 0.906</td></tr><tr><td>01725u</td><td>+0.2°, ×1.005</td><td>0.919 → 0.956</td><td>+0.2°, ×1.005</td><td>0.803 → 0.822</td></tr><tr><td>00056v</td><td>+0.1°, ×1.010</td><td>0.868 → 0.870</td><td>+0.1°, ×1.010</td><td>0.841 → 0.844</td></tr><tr><td>00125v</td><td>+0.2°, ×1.005</td><td>0.933 → 0.936</td><td>+0.3°, ×1.005</td><td>0.934 → 0.936</td></tr><tr><td>00163v</td><td>0.0°, ×1.000</td><td>0.941 → 0.941</td><td>+0.1°, ×1.000</td><td>0.915 → 0.915</td></tr><tr><td>00804v</td><td>0.0°, ×1.005</td><td>0.946 → 0.946</td><td>+0.1°, ×1.005</td><td>0.932 → 0.933</td></tr><tr><td>01164v</td><td>+0.1°, ×1.010</td><td>0.971 → 0.973</td><td>0.0°, ×1.005</td><td>0.963 → 0.963</td></tr><tr><td>01269v</td><td>+0.2°, ×1.005</td><td>0.961 → 0.962</td><td>+0.3°, ×1.000</td><td>0.923 → 0.924</td></tr><tr><td>01522v</td><td>+0.1°, ×1.010</td><td>0.935 → 0.937</td><td>+0.3°, ×1.010</td><td>0.920 → 0.922</td></tr><tr><td>01597v</td><td>+0.1°, ×1.005</td><td>0.933 → 0.935</td><td>+0.3°, ×1.005</td><td>0.904 → 0.905</td></tr><tr><td>01598v</td><td>+0.1°, ×1.005</td><td>0.956 → 0.957</td><td>+0.2°, ×1.000</td><td>0.893 → 0.894</td></tr><tr><td>01728v</td><td>+0.1°, ×1.005</td><td>0.979 → 0.981</td><td>+0.1°, ×1.005</td><td>0.927 → 0.930</td></tr><tr><td>10131v</td><td>+0.1°, ×1.005</td><td>0.955 → 0.956</td><td>+0.2°, ×1.000</td><td>0.910 → 0.911</td></tr><tr><td>31421v</td><td>0.0°, ×1.000</td><td>0.989 → 0.989</td><td>+0.1°, ×1.000</td><td>0.980 → 0.980</td></tr></tbody></table></div></div></details>
 
 <h3 id="final">Final results</h3>
@@ -822,8 +872,8 @@ Drag across each image to compare the basic NCC pyramid result (left) with the f
       Gaussian (σ = 1) downsampling.</li>
   <li><b>Results:</b> NCC aligns 18 / 18 course plates, L2 aligns 17 / 18. The slowest plate takes 0.6 s per metric for the pyramid, and a full-size plate takes about 3 s through the full final pipeline (mostly the B6 rotation / scale search).</li>
   <li><b>Failures:</b> 01725u with L2 (brightness mismatch between channels, decided at the coarsest level; fixed by edges);
-      my own choice 00153a at full size with both metrics (fixed by edges); my own choice 00170a with every method
-      (almost no texture, horizon only).</li>
+      my own choice 00153a at full size with both metrics (the robe is inverted between B and R; fixed by edges); my own choice
+      00170a with every method (almost no texture, and the sun moved between exposures).</li>
   <li><b>Bells &amp; whistles:</b> edge features, automatic cropping, automatic contrast, white balance, color mapping, rotation and scale.</li>
 </ul>
 </section>
