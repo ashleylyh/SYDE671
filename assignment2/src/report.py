@@ -14,7 +14,7 @@ from pathlib import Path
 import numpy as np
 from PIL import Image
 
-from algorithm import convolution, filters, hybrid, stacks
+from algorithm import convolution
 from algorithm.config import BLURRY, DATA_JSON, FAVORITE_BLEND, IMAGES_DIR, INDEX_HTML, TAJ
 from algorithm.io import save_jpg
 from algorithm.hybrid import cutoff_frequency, gaussian_response, log_spectrum, to_gray
@@ -160,7 +160,7 @@ class Report:
         self.data["params"] = self.ex.params.to_dict()
 
     def conv(self) -> None:
-        """Part 1.1: code, runtime / correctness table, and the selfie convolved with box, Dx, Dy."""
+        """Part 1.1: code, runtime table and analysis, boundary analysis, and the selfie convolved with box, Dx, Dy."""
         self.html["conv_code"] = _code(_constants(convolution, "DX", "DY"), convolution.box_filter, convolution.zero_pad,
                                        convolution._prepare, convolution.convolve_4loops,
                                        convolution.convolve_2loops)
@@ -169,20 +169,38 @@ class Report:
         images = [demo.selfie] + [demo.results[n] if n.endswith("box") else signed_to_unit(demo.results[n])
                                   for n in names]
         self.save_panel(images, ["selfie (grayscale)"] + [f"selfie * {n}" for n in names], "conv/selfie.jpg", size=4)
-        self.data["conv"] = demo.rows
+        self.data["conv"] = {"rows": demo.rows, "border": demo.border}
 
-        rows = demo.rows
-        s = rows[0]["crop"][0]
-        h, w = rows[0]["full"]
+        rows, bd = demo.rows, demo.border
+        h, w = rows[0]["size"]
+        box, dx = rows[0], rows[1]
         self.html["conv_table"] = _table(
-            ["Kernel", f"4 loops ({s}×{s})", f"2 loops ({s}×{s})", f"convolve2d ({s}×{s})",
-             f"2 loops ({h}×{w})", f"convolve2d ({h}×{w})", "max |mine − scipy|"],
-            [[r["kernel"], _secs(r["t4_crop"]), _secs(r["t2_crop"]), _secs(r["scipy_crop"]),
-              _secs(r["t2_full"]), _secs(r["scipy_full"]), f'{max(r["diff4"], r["diff2"]):.1e}'] for r in rows])
+            ["Kernel", "Size kh × kw", "Multiply-adds H·W·kh·kw", "4 loops", "2 loops", "convolve2d", "max |mine − scipy|"],
+            [[r["kernel"], f'{r["k"][0]} × {r["k"][1]}', f'{r["ops"]:,}', _secs(r["t4"]), _secs(r["t2"]),
+              _secs(r["scipy"]), f'{max(r["diff4"], r["diff2"]):.1e}'] for r in rows])
+        self.html["conv_analysis"] = f"""<div class="callout">
+  <p><b>Runtime.</b> All three compute the same H·W·kh·kw multiply-adds, O(H·W·k²): on the {h} × {w} selfie that is
+  {box["ops"] / 1e6:.1f} million for the 9×9 box and {dx["ops"] / 1e6:.2f} million for Dx / Dy. They differ in how much
+  runs in Python:</p>
+  <ul>
+    <li><b>4 loops:</b> every multiply-add is a Python step, so the time grows with H·W·k² ({_secs(box["t4"])} for the box).</li>
+    <li><b>2 loops:</b> only H·W Python steps, each one numpy call on the window, so the time barely depends on the kernel
+        (~{_secs(box["t2"])}). It is {box["t4"] / box["t2"]:.0f}× faster than 4 loops for the box, but
+        {dx["t2"] / dx["t4"]:.0f}× slower for the 3-tap Dx / Dy, where one numpy call costs more than three Python multiply-adds.</li>
+    <li><b>convolve2d:</b> the same work in compiled code, {box["t2"] / box["scipy"]:.0f}–{dx["t2"] / dx["scipy"]:.0f}× faster
+        than my 2-loop version.</li>
+  </ul>
+  <p><b>Boundaries.</b> All three treat pixels outside the image as 0, so the results are identical up to floating-point
+  rounding. Zero fill has visible side effects: the box-blurred selfie darkens towards the frame, because the window averages
+  in zeros ({bd["box_edge"] / bd["box_inside"]:.0%} brightness on the border, {bd["box_corner"] / bd["corner_inside"]:.0%} in the
+  corners), and Dx / Dy fire along the image border, where the image "drops" to 0. <code>convolve2d</code> can instead use
+  <code>boundary="symm"</code> (mirror) or <code>"wrap"</code> (periodic), which avoid this; its default
+  <code>mode="full"</code> also returns an image larger by k − 1, so I use <code>mode="same"</code>.</p>
+</div>"""
         self.html["conv_results"] = _figure(
             "conv/selfie.jpg", "My selfie",
-            f"({h}×{w}, grayscale) convolved with the {names[0]}, Dx and Dy, using my 2-loop version. "
-            "Dx / Dy are shown with mid-gray = 0, white = positive, black = negative.", cls="plain")
+            f"({h}×{w}, grayscale) convolved with the {names[0]}, Dx and Dy (my 2-loop version). "
+            "Dx / Dy: mid-gray = 0, white = positive, black = negative.", cls="plain")
 
     def finite_diff(self) -> None:
         """Part 1.2: derivatives, magnitude, edges, and the threshold sweep that justifies the choice."""
@@ -216,12 +234,8 @@ class Report:
         self.data["dog"] = {"sigma": p.dog_sigma, "ksize": k, "threshold": d.one_step.threshold,
                             "diff_full": d.diff_full, "diff_interior": d.diff_interior}
         self.html["dog_check"] = (
-            f'<div class="callout ok"><p><b>Same result.</b> The largest difference between the two-step and the one-step '
-            f"gradients is <code>{d.diff_full:.1e}</code>, which is floating-point rounding. Convolution is associative, so "
-            "(f * G) * D = f * (G * D). This holds even at the border here: mirroring the image and then blurring with "
-            "the symmetric G gives an image that is itself mirror-symmetric, so mirroring before or after the blur "
-            "makes no difference.</p></div>")
-        self.html["dog_code"] = _code(filters.gaussian_2d, filters.dog_filters)
+            f'<div class="callout ok"><p><b>Same result.</b> The one- and two-convolution gradients differ by at most '
+            f"<code>{d.diff_full:.1e}</code> (rounding), because convolution is associative: (f * G) * D = f * (G * D).</p></div>")
 
     def orientation(self) -> None:
         """Bells & whistles: gradient direction as hue."""
@@ -234,12 +248,16 @@ class Report:
             '<div class="grid-3">'
             + _figure("orientation/shaded.jpg", "Direction × strength", "hue = direction, brightness = |∇f|")
             + _figure("orientation/edges.jpg", "Direction on edges", "only pixels above the DoG edge threshold")
-            + _figure("orientation/wheel.jpg", "Legend", "the color of a gradient pointing from the centre "
-                      "towards each point (towards brighter)", cls="plain")
+            + _figure("orientation/wheel.jpg", "Legend", "the color of a gradient pointing from the centre towards "
+                      "each point, i.e. towards the brighter side", cls="plain")
             + "</div>"
-            f'<p>Check: on this image my <code>arctan2_own</code> is within <code>{o.atan_error:.1e}</code> rad of '
-            "<code>np.arctan2</code> (used only for this check, never for the result).</p>")
-        self.html["orientation_code"] = _code(filters.arctan2_own, filters.orientation_rgb)
+            "<p><b>Reading the result.</b> Each color is a direction, as on the wheel: red = brighter to the right, "
+            "green-yellow = brighter upwards, cyan = brighter to the left, blue-purple = brighter downwards. The two sides "
+            "of a tripod leg have opposite colors (e.g. red and cyan): the leg is darker than the background, so on one side "
+            "the image gets brighter to the left and on the other to the right. The top of the man's head and shoulders is "
+            "green-yellow, because the bright sky is above them.</p>"
+            f"<p><b>Check.</b> My arctan matches <code>np.arctan2</code> to within <code>{o.atan_error:.0e}</code> rad on "
+            "every pixel; <code>np.arctan2</code> is used only for this check, not for the result.</p>")
 
     def sharpen(self) -> None:
         """Part 2.1: the unsharp mask steps, the amount sweep, and the blur -> re-sharpen evaluation."""
@@ -262,7 +280,6 @@ class Report:
         self.html["sharpen_steps"] = '<div class="wide">' + "".join(steps) + "</div>"
         self.html["sharpen_sliders"] = '<div class="compare-grid">' + "".join(sliders) + "</div>"
         self.html["sharpen_alphas"] = '<div class="wide">' + "".join(sweeps) + "</div>"
-        self.html["sharpen_code"] = _code(filters.unsharp_kernel)
 
         ev = self.ex.sharpen_eval
         figs = [_figure(self.save_web(ev.original, "sharpen/eval/original.jpg"), "Original (sharp)"),
@@ -285,11 +302,12 @@ class Report:
         parts = []
 
         # 1. originals (with the clicked points) and the aligned, cropped inputs
+        pts = lambda p: " and ".join(f"({x:.0f}, {y:.0f})" for x, y in p)
         if fav.points:
             row = [_figure(self.save_web(mark_points(fav.low_orig, fav.points["low"]), f"{d}/low_points.jpg"),
-                           "Low-pass input", "with my two clicked points"),
+                           "Low-pass input", f"eye points I labelled by hand: {pts(fav.points['low'])}"),
                    _figure(self.save_web(mark_points(fav.high_orig, fav.points["high"]), f"{d}/high_points.jpg"),
-                           "High-pass input", "with my two clicked points")]
+                           "High-pass input", f"eye points I labelled by hand: {pts(fav.points['high'])}")]
             parts.append('<h4>1. Original images and alignment</h4><div class="grid-2">' + "".join(row) + "</div>")
         row = [_figure(self.save_web(fav.low_in, f"{d}/low_aligned.jpg"), "Aligned low-pass input"),
                _figure(self.save_web(fav.high_in * fav.high_real[..., None], f"{d}/high_aligned.jpg"),
@@ -355,9 +373,8 @@ class Report:
             rows.append({"name": q.name, "sigma_low": q.sigma_low, "sigma_high": q.sigma_high,
                          "cutoff_low": cutoff_frequency(q.sigma_low), "cutoff_high": cutoff_frequency(q.sigma_high),
                          "size": [int(v) for v in h.hybrid.shape], "points": h.points})
-        self.html["hybrid_results"] = "\n".join(blocks)
-        self.html["hybrid_code"] = _code(hybrid.align_images, hybrid.low_pass, hybrid.high_pass, hybrid.hybrid_image,
-                                         hybrid.cutoff_frequency)
+        # the favourite is already shown step by step above
+        self.html["hybrid_results"] = "\n".join(b for b, h in zip(blocks, self.ex.hybrids) if h.pair.name != f.name)
         self.data["hybrid"] = rows
 
     def hybrid_color(self) -> None:
@@ -403,7 +420,6 @@ class Report:
                                "reconstruction_error": st.reconstruction_error}
         self.html["stacks_check"] = (f'<div class="callout ok"><p><b>Check:</b> summing each Laplacian stack gives back '
                                      f"the original image to within <code>{st.reconstruction_error:.1e}</code>.</p></div>")
-        self.html["stacks_code"] = _code(stacks.gaussian_stack, stacks.laplacian_stack, stacks.blend_stacks)
 
     def blend(self) -> None:
         """Part 2.4: every blend with its inputs and mask, why multiresolution, the levels choice, and the

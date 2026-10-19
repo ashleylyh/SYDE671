@@ -24,10 +24,14 @@ FD_SWEEP = (0.10, 0.15, 0.20, 0.25, 0.30, 0.40)        # thresholds shown for 1.
 DOG_SWEEP = (0.04, 0.06, 0.08, 0.10, 0.12, 0.15)       # and for 1.3
 
 
-def _timed(fn, *args) -> tuple[np.ndarray, float]:
-    start = time.perf_counter()
-    out = fn(*args)
-    return out, time.perf_counter() - start
+def _timed(fn, *args, repeats: int = 1) -> tuple[np.ndarray, float]:
+    """Result and run time in seconds (the fastest of `repeats` runs, which filters out OS noise)."""
+    best = float("inf")
+    for _ in range(repeats):
+        start = time.perf_counter()
+        out = fn(*args)
+        best = min(best, time.perf_counter() - start)
+    return out, best
 
 
 def scipy_same(image: np.ndarray, kernel: np.ndarray) -> np.ndarray:
@@ -46,36 +50,37 @@ def psnr(a: np.ndarray, b: np.ndarray) -> float:
 class ConvDemo:
     selfie: np.ndarray                      # grayscale, [0, 1]
     kernels: dict[str, np.ndarray]          # box / Dx / Dy
-    results: dict[str, np.ndarray]          # my 2-loop result on the full selfie, per kernel
-    rows: list[dict]                        # runtime and max difference per kernel and implementation
+    results: dict[str, np.ndarray]          # my 2-loop result on the selfie, per kernel
+    rows: list[dict]                        # sizes, operation count, run times and max difference per kernel
+    border: dict                            # what zero padding does at the image border (measured)
 
 
 def make_conv_demo(params: Params) -> ConvDemo:
-    """Convolve my selfie with the 9x9 box, Dx and Dy; compare my two versions with convolve2d.
+    """Convolve my selfie with the 9x9 box, Dx and Dy with all three implementations, timing each.
 
-    The 4-loop version is far too slow for the whole selfie, so all three are timed on a
-    centre crop of timing_side x timing_side; the 2-loop version and scipy also run on the full selfie.
+    The fast versions are timed as the best of 3 runs; the 4-loop version (seconds) once.
     """
     selfie = load_image(find_input(SELFIE), gray=True, max_side=params.selfie_max_side)
     h, w = selfie.shape
-    s = params.timing_side
-    crop = selfie[(h - s) // 2:(h + s) // 2, (w - s) // 2:(w + s) // 2]
-    kernels = {f"{params.box_size}x{params.box_size} box": box_filter(params.box_size), "Dx": DX, "Dy": DY}
+    kernels = {f"{params.box_size}×{params.box_size} box": box_filter(params.box_size), "Dx": DX, "Dy": DY}
 
     results, rows = {}, []
     for name, k in kernels.items():
-        ref_crop, t_scipy_crop = _timed(scipy_same, crop, k)
-        out4, t4 = _timed(convolve_4loops, crop, k)
-        out2_crop, t2_crop = _timed(convolve_2loops, crop, k)
-        ref, t_scipy = _timed(scipy_same, selfie, k)
-        out2, t2 = _timed(convolve_2loops, selfie, k)
+        out4, t4 = _timed(convolve_4loops, selfie, k)
+        out2, t2 = _timed(convolve_2loops, selfie, k, repeats=3)
+        ref, t_scipy = _timed(scipy_same, selfie, k, repeats=3)
         results[name] = out2
-        rows.append({"kernel": name, "crop": [s, s], "full": [h, w],
-                     "t4_crop": t4, "t2_crop": t2_crop, "scipy_crop": t_scipy_crop,
-                     "t2_full": t2, "scipy_full": t_scipy,
-                     "diff4": float(np.abs(out4 - ref_crop).max()),
-                     "diff2": float(np.abs(out2 - ref).max())})
-    return ConvDemo(selfie, kernels, results, rows)
+        rows.append({"kernel": name, "k": list(k.shape), "size": [h, w], "ops": h * w * k.size,
+                     "t4": t4, "t2": t2, "scipy": t_scipy,
+                     "diff4": float(np.abs(out4 - ref).max()), "diff2": float(np.abs(out2 - ref).max())})
+
+    box, dx, dy = (results[n] for n in kernels)
+    r = params.box_size // 2
+    border = {"box_edge": float(box[:, 0].mean()), "box_inside": float(box[:, r].mean()),     # r: first full window
+              "box_corner": float(box[0, 0]), "corner_inside": float(selfie[: r + 1, : r + 1].mean()),
+              "dx_edge": float(np.abs(dx[:, [0, -1]]).mean()), "dx_inside": float(np.abs(dx[:, 1:-1]).mean()),
+              "dy_edge": float(np.abs(dy[[0, -1]]).mean()), "dy_inside": float(np.abs(dy[1:-1]).mean())}
+    return ConvDemo(selfie, kernels, results, rows, border)
 
 
 # ---------------------------------------------------------------- Part 1.2

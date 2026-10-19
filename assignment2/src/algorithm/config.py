@@ -89,10 +89,9 @@ def find_input(stem: str, folder: Path = DATA_DIR) -> Path:
 class Params:
     """Fixed parameters, chosen once and used for every image."""
 
-    # Part 1.1. The 4-loop version is O(H W k^2) Python steps, so it is timed on a smaller copy.
+    # Part 1.1
     box_size: int = 9                   # PDF: "write out a 9x9 box filter"
-    selfie_max_side: int = 600          # selfie resized so its longest side is <= this
-    timing_side: int = 256              # square crop of the selfie used to time all three versions
+    selfie_max_side: int = 600          # selfie resized so its longest side is <= this (the photo is 5712 × 4284)
     # Parts 1.2 / 1.3: edge thresholds on the gradient magnitude (image in [0, 1]), chosen by eye
     fd_threshold: float = 0.25
     dog_sigma: float = 1.5              # Gaussian for 1.3; kernel size = ksize_for(sigma) (±3 sigma)
