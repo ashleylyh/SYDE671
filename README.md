@@ -5,7 +5,7 @@ Published with GitHub Pages at <https://ashleylyh.github.io/SYDE671/>.
 | Assignment | Page |
 |---|---|
 | Assignment 1: Becoming friends with the camera & Colorizing the Prokudin-Gorskii collection | <https://ashleylyh.github.io/SYDE671/assignment1/> |
-| Assignment 2 | <https://ashleylyh.github.io/SYDE671/assignment2/> |
+| Assignment 2: Fun with Filters and Frequencies | <https://ashleylyh.github.io/SYDE671/assignment2/> |
 
 ## Layout
 
@@ -23,6 +23,7 @@ SYDE671/
     │   ├── data.json       # every number on the page (offsets, scores, crop boxes, ...)
     │   └── cache/          # JSON cache of the slow alignment searches
     └── data/               # input plates (git-ignored, not published)
+└── assignment2/            # same structure; results/align_points.json holds the clicked alignment points
 ```
 
 PDFs, zips, raw TIFF scans and `data/` folders are git-ignored, so course materials and large inputs stay local.
@@ -101,6 +102,54 @@ assignment1/src/
 
 Open `assignment1/index.html` in Chrome → Print → **Save as PDF**, with Margins set to **Default**. The page has print
 styles: collapsed sections open, before / after sliders become side-by-side pairs, and wide tables show every column.
+
+## Assignment 2: running the code
+
+### 1. Put the input images in place
+
+```
+assignment2/data/              # any format Pillow reads (jpg, jpeg, png, avif); found by file name without extension
+├── selfie.*                   # 1.1
+├── cameraman.*                # 1.2, 1.3, orientation
+├── taj.*, cat_closeup.*       # 2.1 (the Taj Mahal from Learn, my own blurry image)
+├── skyline.*                  # 2.1 evaluation (a sharp image to blur and re-sharpen)
+├── cat_hybrid1.*, jaguar_hybrid1.*, mainecoon_hybrid2.*, owl_hybrid2.*     # 2.2, already aligned
+├── apple.*, orange.*          # 2.3, 2.4
+└── earth_blend1.*, mars_blend1.*, dr_strange_blend2.*, eye_aligned_blend2.*, eye_mask.*   # 2.4
+assignment2/hybrid/            # the starter zip from Learn, unzipped: DerekPicture.jpg, nutmeg.jpg (git-ignored)
+```
+
+### 2. Run everything
+
+From `assignment2/src`:
+
+```
+uv run python run.py                          # every section, about 30 s
+uv run python run.py --only hybrid blend      # just these sections (data.json keeps the others)
+uv run python pick_points.py                  # re-click the Derek / Nutmeg alignment points (opens a window)
+```
+
+Sections: `params conv finite_diff dog orientation sharpen hybrid hybrid_color stacks blend blend_color hero`.
+A run writes `results/images/**` (plus `thumbs/`), `results/data.json` and the generated blocks of `index.html`.
+Hybrid pairs, blend pairs and every parameter are in `src/algorithm/config.py`.
+
+### 3. Code
+
+```
+assignment2/src/
+├── algorithm/
+│   ├── config.py         # paths, inputs, Params, the hybrid and blend pairs
+│   ├── io.py             # load_image (→ float32 in [0, 1]), save_jpg
+│   ├── convolution.py    # 1.1: zero padding, 4-loop and 2-loop convolution (numpy only)
+│   ├── filters.py        # 1.2-1.3, orientation, 2.1: gradients, Gaussian / DoG, own arctan2, unsharp mask
+│   ├── hybrid.py         # 2.2: port of align_images.m, low / high pass, cutoff frequency, spectra
+│   ├── stacks.py         # 2.3-2.4: Gaussian / Laplacian stacks, multiresolution blending
+│   └── viz.py            # image panels, spectra, filter-gain chart
+├── experiments.py        # one function per page section; computes numbers and images
+├── report.py             # writes results/images, results/data.json and the generated blocks of index.html
+├── pick_points.py        # click the alignment points
+└── run.py                # command-line entry point
+```
 
 ## Adding a new assignment
 

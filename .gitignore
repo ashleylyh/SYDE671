@@ -8,11 +8,15 @@
 # Course materials (lecture slides, handouts, assignment PDFs, starter zips, the code zip for Learn) — keep local
 *.pdf
 *.zip
+# The unzipped hybrid starter (Derek / Nutmeg photos, .m files)
+assignment2/hybrid/
 
 # Raw input data — only publish the result images shown on the pages
 **/data/
 *.tif
 *.tiff
+
+**/submit/
 
 # Python
 __pycache__/
