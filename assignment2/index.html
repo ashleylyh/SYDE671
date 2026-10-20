@@ -183,7 +183,6 @@ footer { border-top: 1px solid var(--border); color: var(--muted); font-size: 14
   <a href="#stacks">2.3 Gaussian &amp; Laplacian stacks</a>
   <a href="#blend">2.4 Multiresolution blending</a>
   <a href="#blend-color">B&amp;W · Color blending</a>
-  <a href="#learned">What I learned</a>
   <a href="#summary">Summary</a>
 </nav>
 
@@ -266,7 +265,7 @@ def convolve_2loops(image: np.ndarray, kernel: np.ndarray) -&gt; np.ndarray:
 <p>Reference: <code>convolve2d(image, kernel, mode="same", boundary="fill", fillvalue=0)</code>. All three run on my
 selfie (grayscale, resized to 600 × 450).</p>
 <!-- generated:conv_table start (report.py) -->
-<div class="table-wrap"><table><thead><tr><th>Kernel</th><th>Size kh × kw</th><th>Multiply-adds H·W·kh·kw</th><th>4 loops</th><th>2 loops</th><th>convolve2d</th><th>max |mine − scipy|</th></tr></thead><tbody><tr><td>9×9 box</td><td>9 × 9</td><td>21,870,000</td><td>2.26 s</td><td>276.7 ms</td><td>14.3 ms</td><td>1.1e-06</td></tr><tr><td>Dx</td><td>1 × 3</td><td>810,000</td><td>107.9 ms</td><td>245.1 ms</td><td>1.4 ms</td><td>0.0e+00</td></tr><tr><td>Dy</td><td>3 × 1</td><td>810,000</td><td>119.1 ms</td><td>246.4 ms</td><td>2.2 ms</td><td>0.0e+00</td></tr></tbody></table></div>
+<div class="table-wrap"><table><thead><tr><th>Kernel</th><th>Size kh × kw</th><th>Multiply-adds H·W·kh·kw</th><th>4 loops</th><th>2 loops</th><th>convolve2d</th><th>max |mine − scipy|</th></tr></thead><tbody><tr><td>9×9 box</td><td>9 × 9</td><td>21,870,000</td><td>2.29 s</td><td>272.6 ms</td><td>14.4 ms</td><td>1.1e-06</td></tr><tr><td>Dx</td><td>1 × 3</td><td>810,000</td><td>113.9 ms</td><td>246.3 ms</td><td>1.4 ms</td><td>0.0e+00</td></tr><tr><td>Dy</td><td>3 × 1</td><td>810,000</td><td>125.2 ms</td><td>247.5 ms</td><td>2.1 ms</td><td>0.0e+00</td></tr></tbody></table></div>
 <!-- generated:conv_table end -->
 <!-- generated:conv_analysis start (report.py) -->
 <div class="callout">
@@ -274,11 +273,11 @@ selfie (grayscale, resized to 600 × 450).</p>
   21.9 million for the 9×9 box and 0.81 million for Dx / Dy. They differ in how much
   runs in Python:</p>
   <ul>
-    <li><b>4 loops:</b> every multiply-add is a Python step, so the time grows with H·W·k² (2.26 s for the box).</li>
+    <li><b>4 loops:</b> every multiply-add is a Python step, so the time grows with H·W·k² (2.29 s for the box).</li>
     <li><b>2 loops:</b> only H·W Python steps, each one numpy call on the window, so the time barely depends on the kernel
-        (~276.7 ms). It is 8× faster than 4 loops for the box, but
+        (~272.6 ms). It is 8× faster than 4 loops for the box, but
         2× slower for the 3-tap Dx / Dy, where one numpy call costs more than three Python multiply-adds.</li>
-    <li><b>convolve2d:</b> the same work in compiled code, 19–172× faster
+    <li><b>convolve2d:</b> the same work in compiled code, 19–180× faster
         than my 2-loop version.</li>
   </ul>
   <p><b>Boundaries.</b> All three treat pixels outside the image as 0, so the results are identical up to floating-point
@@ -462,8 +461,7 @@ frequencies of another, so its interpretation changes with viewing distance:</p>
 <ol class="steps">
   <li><b>Align</b> the two images, because the two interpretations only merge when their parts line up. For Derek and
       Nutmeg I ported the starter's <code>align_images.m</code>: I labelled the centres of the two eyes in each image manually; the code
-      translates, scales and rotates Nutmeg so the eyes coincide, then crops both to the same size (keeping Derek's whole
-      frame, so neither head is cut). My own two pairs were already aligned.</li>
+      translates, scales and rotates Nutmeg so the eyes coincide, then crops both to the same size. My own two pairs were already aligned.</li>
   <li><b>Low-pass</b> the far image with a 2-D Gaussian (σ_low).</li>
   <li><b>High-pass</b> the close image with the impulse minus a Gaussian (σ_high), i.e. the image minus its blurred version.</li>
   <li><b>Add</b> the two. The high-pass part averages to zero, so the result keeps the brightness of the far image. As in the
@@ -654,39 +652,19 @@ Levels 0–2 are frequency bands (0 = mid-gray); level 3 holds the remaining low
   </ul>
 </div>
 
-<h3 id="learned">What I learned</h3>
-<p class="lead">The most important thing I learned: almost everything in this assignment is the same operation,
-a Gaussian blur, and the real decision every time is <em>which frequencies</em> to keep, remove or mix.</p>
-<ul>
-  <li><b>One filter, many tools.</b> The Gaussian removes noise before differentiating (DoG), its complement adds detail
-      back (unsharp masking), splitting an image at one cutoff makes a hybrid, and splitting it into many bands makes blending
-      seamless. Once I saw them all as "pick a band", choosing a parameter became a question about the picture, not trial and error.</li>
-  <li><b>σ is a scale, and it has to match the content.</b> The edge threshold depended on the blur; the hybrid cutoffs had
-      to separate Derek's face from the cat's fur; and the blend only looked right when the deepest level's blur matched the size of the
-      region (6 levels for the planets, 4 for the small eye). The same σ that works for one image can fail on another.</li>
-  <li><b>Perception follows frequency.</b> A hybrid works because we can't resolve fine detail from far away. Sharpening
-      "works" because we read edge contrast as focus, even though the PSNR test showed that it can't restore detail the blur
-      removed. And the color experiments in both 2.2 and 2.4 pointed the same way: color lives in the low frequencies, so that is where it
-      helps.</li>
-  <li><b>Math identities are practical.</b> Associativity let me replace two convolutions with one DoG filter;
-      separability made the large Gaussians of Part 2 ~25× cheaper; and the telescoping Laplacian stack rebuilds the image
-      exactly, which gave me a built-in correctness check.</li>
-  <li><b>Details at the borders matter.</b> Zero padding made the image frame look like an edge, the FFT showed a bright cross
-      from the image borders, and alignment padding needed care so that the heads weren't cropped off. Implementing the
-      convolution from scratch is what made me look at these.</li>
-</ul>
-
 <h3 id="summary">Summary</h3>
 <ul>
-  <li><b>Convolution:</b> zero-padded 4-loop and 2-loop numpy versions, identical to <code>convolve2d</code> up to rounding (max difference 1e-6);
-      everything after Part 1.1 uses <code>convolve2d</code> with mirrored borders.</li>
-  <li><b>Edges:</b> finite differences with threshold 0.25; derivative of Gaussian (σ = 1.5, 11×11) with threshold 0.10; the one-
-      and two-convolution versions agree to 1e-15. Gradient orientation as HSV hue with my own polynomial arctan.</li>
-  <li><b>Sharpening:</b> unsharp mask <code>(1 + α)e − αG</code>, σ = 2, α = 1.5.</li>
-  <li><b>Hybrids:</b> Derek + Nutmeg (aligned with the ported <code>align_images</code>), cat + jaguar, Maine coon + owl;
-      σ_low = 7, σ_high = 4 (cutoffs 0.027 / 0.047 cycles/pixel); color works best in the low-frequency image.</li>
-  <li><b>Stacks and blending:</b> σ = 2 doubling per level; 6 levels for the oraple and Earth + Mars, 4 for the third eye;
-      the mask gets its own Gaussian stack (p. 230); all blends in color.</li>
+  <li><b>Most important thing I learned:</b> almost everything here is the same operation, a Gaussian blur, and the real
+      decision every time is <em>which frequencies</em> to keep, remove or mix. σ is a scale that has to match the content.</li>
+  <li><b>Filters and edges:</b> my zero-padded 4-loop and 2-loop convolutions match <code>convolve2d</code> up to rounding;
+      edges with finite differences (threshold 0.25) and DoG (σ = 1.5, threshold 0.10), which are less noisy; gradient
+      orientation as HSV hue with my own arctan.</li>
+  <li><b>Sharpening:</b> unsharp mask <code>(1 + α)e − αG</code> with σ = 2, α = 1.5. It boosts the remaining high
+      frequencies but cannot restore detail that a blur removed.</li>
+  <li><b>Hybrids:</b> Derek + Nutmeg, cat + jaguar, Maine coon + owl with σ_low = 7, σ_high = 4 (cutoffs 0.027 / 0.047
+      cycles/pixel); color helps most in the low-frequency image.</li>
+  <li><b>Stacks and blending:</b> stacks with σ doubling per level; blending with a Gaussian stack of the mask
+      (6 levels for the oraple and Earth + Mars, 4 for the small third-eye mask); color makes the blends convincing.</li>
 </ul>
 </section>
 </main>
