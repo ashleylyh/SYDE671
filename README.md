@@ -6,6 +6,7 @@ Published with GitHub Pages at <https://ashleylyh.github.io/SYDE671/>.
 |---|---|
 | Assignment 1: Becoming friends with the camera & Colorizing the Prokudin-Gorskii collection | <https://ashleylyh.github.io/SYDE671/assignment1/> |
 | Assignment 2: Fun with Filters and Frequencies | <https://ashleylyh.github.io/SYDE671/assignment2/> |
+| Assignment 3: [Auto]Stitching Photo Mosaics | <https://ashleylyh.github.io/SYDE671/assignment3/> |
 
 ## Layout
 
@@ -24,6 +25,7 @@ SYDE671/
     │   └── cache/          # JSON cache of the slow alignment searches
     └── data/               # input plates (git-ignored, not published)
 └── assignment2/            # same structure; results/align_points.json holds the clicked alignment points
+└── assignment3/            # same structure; results/points.json holds the clicked correspondences and corners
 ```
 
 PDFs, zips, raw TIFF scans and `data/` folders are git-ignored, so course materials and large inputs stay local.
@@ -151,7 +153,76 @@ assignment2/src/
 └── run.py                # command-line entry point
 ```
 
+## Assignment 3: running the code
+
+### 1. Put the input images in place
+
+```
+assignment3/data/               # git-ignored; any format Pillow reads, including iPhone .HEIC (pillow-heif)
+├── mosaic/
+│   ├── set1/IMG_1553-1555.*    # Atrium (photos)
+│   ├── set2/IMG_1766-1768.*    # Marina (photos)
+│   ├── set4/IMG_0574_*s.jpg    # Toronto skyline: frames at 9, 11, 13 s of IMG_0574.MOV
+│   └── set5/IMG_1051_*s.jpg    # Niagara Falls: frames at 3, 5, 7, 9 s of IMG_1051.MOV
+└── rectify/
+    └── IMG_3548.*, IMG_4344.*, IMG_6530.*    # Renoir, Almond Blossom, cocktail posters
+```
+
+The sets (left-to-right order, reference image) and the rectification targets are in `src/algorithm/config.py`.
+
+### 2. Click the points (Part 1 only)
+
+From `assignment3/src`:
+
+```
+uv run python pick_points.py                  # every neighbouring pair without saved points
+uv run python pick_points.py set2 --edit      # refine the saved points of a set
+uv run python pick_points.py set2 --redo      # click a set again from scratch
+uv run python pick_points.py --rectify        # the 4 corners of each rectangle (any order)
+```
+
+Click a point in the left image, then the same point in the right image (at least 6 pairs). The selected point can be
+moved with the arrow keys (1 px, Shift: 0.25 px) while a zoom panel shows it; `[` / `]` select earlier points, Backspace
+deletes the last one, Enter saves. Points go to `results/points.json`. Part 2 needs no clicking.
+
+### 3. Run everything
+
+```
+uv run python run.py                          # every section, about 35 s
+uv run python run.py --only homography mosaic # just these sections (data.json keeps the others)
+```
+
+Sections: `params shoot homography_check homography rectify mosaic corners descriptors matching ransac hero`.
+A run writes `results/images/**` (plus `thumbs/`), `results/data.json` and the generated blocks of `index.html`.
+Sections whose points are not clicked yet are skipped with a message.
+
+### 4. Code
+
+```
+assignment3/src/
+├── algorithm/
+│   ├── config.py         # paths, image sets, rectifications, Params
+│   ├── io.py             # load_image (HEIC too), save_jpg, clicked-point storage
+│   ├── homography.py     # A.2: computeH (least squares), apply_H
+│   ├── warp.py           # A.3: inverse warping, warpImageNearestNeighbor, warpImageBilinear (numpy only)
+│   ├── mosaic.py         # A.4: chaining to the reference, canvas, weights, overwrite / feathering / 2-band blending
+│   ├── harris.py         # B.1: the provided Harris code (unchanged)
+│   ├── features.py       # B.1-B.3: ANMS, 8 x 8 descriptors, ratio-test matching
+│   ├── ransac.py         # B.4: 4-point RANSAC
+│   └── viz.py            # image panels, correspondence / corner / match figures, ratio histogram
+├── experiments.py        # one function per page section; computes numbers and images
+├── report.py             # writes results/images, results/data.json and the generated blocks of index.html
+├── pick_points.py        # click correspondences and rectangle corners
+└── run.py                # command-line entry point
+```
+
+### 5. Save the page as PDF
+
+As for Assignment 1, with **Background graphics** on. The equations are rendered with KaTeX from a CDN, so the page needs
+an internet connection; wait until they appear before printing. Print styles keep every equation, system of equations
+and numbered step on one page.
+
 ## Adding a new assignment
 
-1. Copy `assignment2/` to `assignmentN/` and edit its `index.html`.
+1. Copy `assignment3/` to `assignmentN/` and edit its `index.html`.
 2. Add a link to it in the root `index.html`.
