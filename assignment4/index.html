@@ -1,0 +1,938 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SYDE 671 A4</title>
+<meta name="description" content="SYDE 671 Assignment 4: fundamental matrix estimation, image rectification, affine factorization and triangulation for structure from motion.">
+<style>
+:root {
+  --bg: #ffffff; --surface: #ffffff; --fg: #1a2233; --muted: #5a6475; --border: #dde3ec;
+  --accent: #1f3a68; --accent-soft: #e8edf5; --ok: #2f6f4e; --ok-soft: #e4f1ea; --warn-soft: #fbf1d9;
+  --fail-soft: #f8e6e4;
+  --shadow: 0 1px 2px rgba(20, 30, 55, .06), 0 4px 16px rgba(20, 30, 55, .07);
+  --serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+  --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+:root { color-scheme: light; }
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body { margin: 0; background: var(--bg); color: var(--fg); font: 16.5px/1.65 var(--sans); }
+a { color: var(--accent); }
+img { max-width: 100%; height: auto; display: block; }
+
+.hero { padding: 72px 16px 48px; text-align: center; border-bottom: 1px solid var(--border);
+  background: var(--bg); }
+.hero .kicker { font: 600 13px/1 var(--sans); letter-spacing: .14em; text-transform: uppercase; color: var(--accent); }
+.hero h1 { font: 600 clamp(32px, 5vw, 54px)/1.1 var(--serif); margin: 14px auto 12px; max-width: 900px; }
+.hero p { color: var(--muted); max-width: 680px; margin: 0 auto; }
+.hero .byline { font: 500 17px/1.4 var(--sans); color: var(--muted); margin: 0 auto 4px; }
+.hero .back { position: absolute; left: 16px; top: 16px; font-size: 14px; text-decoration: none; }
+.hero-strip { display: flex; gap: 8px; justify-content: center; margin: 32px auto 0; max-width: 980px; }
+.hero-strip span { width: 25%; aspect-ratio: 1; overflow: hidden; border-radius: 6px; box-shadow: var(--shadow); }
+.hero-strip img { width: 100%; height: 100%; object-fit: cover; }
+
+.layout { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 48px; max-width: 1240px; margin: 0 auto; padding: 40px 24px 96px; }
+nav.toc { position: sticky; top: 24px; align-self: start; font-size: 14px; max-height: calc(100vh - 48px); overflow: auto; }
+nav.toc b { display: block; font: 600 12px var(--sans); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); margin: 18px 0 6px; }
+nav.toc a { display: block; color: var(--fg); text-decoration: none; padding: 3px 0 3px 10px; border-left: 2px solid var(--border); }
+nav.toc a:hover, nav.toc a.active { border-left-color: var(--accent); color: var(--accent); }
+main { min-width: 0; }
+
+h2 { font: 600 32px/1.2 var(--serif); margin: 72px 0 8px; padding-top: 8px; }
+h2 .part { display: block; font: 600 13px var(--sans); letter-spacing: .14em; text-transform: uppercase; color: var(--accent); margin-bottom: 8px; }
+h3 { font: 600 23px/1.3 var(--serif); margin: 52px 0 10px; scroll-margin-top: 16px; }
+h4 { font: 600 17px/1.3 var(--sans); margin: 28px 0 6px; }
+section > h2:first-child { margin-top: 0; }
+p, li { max-width: 76ch; }
+.lead { font-size: 18px; color: var(--muted); max-width: 72ch; }
+.mono, code { font-family: var(--mono); font-size: .88em; }
+code { background: var(--accent-soft); padding: 1px 5px; border-radius: 4px; }
+pre.code { background: var(--accent-soft); border: 1px solid var(--border); border-radius: 8px; padding: 12px 16px;
+  margin: 14px 0; overflow-x: auto; font-size: 13.5px; line-height: 1.5; }
+pre.code code { background: none; padding: 0; font-size: inherit; }
+
+.callout { background: var(--surface); border: 1px solid var(--border); border-left: 4px solid var(--accent);
+  border-radius: 8px; padding: 14px 18px; margin: 20px 0; max-width: 80ch; box-shadow: var(--shadow); }
+.callout.ok { border-left-color: var(--ok); }
+.callout p { margin: 6px 0; }
+.formula { font: 15px var(--mono); background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+  padding: 12px 16px; margin: 14px 0; overflow-x: auto; max-width: 80ch; white-space: pre; }
+.steps { counter-reset: step; list-style: none; padding: 0; max-width: 80ch; }
+.steps li { counter-increment: step; position: relative; padding: 0 0 12px 44px; }
+.steps li::before { content: counter(step); position: absolute; left: 0; top: 1px; width: 28px; height: 28px;
+  border-radius: 50%; background: var(--accent); color: #fff; font: 600 14px/28px var(--sans); text-align: center; }
+/* bullet lists inside a step are plain bullets, not numbered steps */
+.steps li li { counter-increment: none; padding: 0 0 4px; }
+.steps li li::before { content: none; }
+.steps ul { list-style: disc; padding-left: 20px; margin: 6px 0; }
+
+figure { margin: 0; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; box-shadow: var(--shadow); }
+figure a { display: block; }
+figcaption { padding: 10px 12px; font-size: 14px; color: var(--muted); }
+figcaption b { color: var(--fg); margin-right: 6px; }
+figcaption .mono { display: block; }
+figure.plain a { background: #fff; }
+figure.plain img { width: 100%; }
+figure.result { max-width: 520px; margin: 0 auto; }
+.wide { margin: 20px 0; }
+.grid-2, .grid-3, .grid-4, .gallery { display: grid; gap: 16px; margin: 20px 0; align-items: start; }
+.grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.grid-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.gallery { grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); }
+.gallery.big { grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); }
+.pair > div > p { font-size: 15.5px; margin: 12px 2px 0; }
+.sources { font-size: 13px; color: var(--muted); margin-top: 28px; }
+
+.table-wrap { overflow-x: auto; margin: 16px 0; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); box-shadow: var(--shadow); }
+table { border-collapse: collapse; width: 100%; font-size: 14px; }
+th, td { padding: 7px 12px; text-align: left; border-bottom: 1px solid var(--border); white-space: nowrap; }
+th { font-weight: 600; background: var(--accent-soft); position: sticky; top: 0; }
+tbody tr:last-child td { border-bottom: none; }
+td { font-family: var(--mono); font-size: 13px; }
+td:first-child { font-family: var(--sans); font-weight: 600; }
+
+details { margin: 16px 0; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); }
+details > summary { cursor: pointer; padding: 12px 16px; font-weight: 600; }
+details > div { padding: 0 16px 16px; }
+details .gallery { margin-top: 0; }
+
+.compare-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 18px; margin: 20px 0; align-items: start; }
+.compare-frame { position: relative; line-height: 0; }
+.compare-frame img { width: 100%; }   /* small images (Taj Mahal, 300 px) are scaled up like the overlay */
+.compare-frame img.after { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover;
+  clip-path: inset(0 0 0 var(--pos)); }
+.compare-frame::after { content: ""; position: absolute; top: 0; bottom: 0; left: var(--pos); width: 2px; background: #fff; box-shadow: 0 0 4px rgba(0,0,0,.5); pointer-events: none; }
+.compare-frame input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: ew-resize; margin: 0; }
+.tag { position: absolute; top: 8px; font: 600 11px/1 var(--sans); letter-spacing: .06em; text-transform: uppercase; color: #fff;
+  background: rgba(0,0,0,.55); padding: 5px 7px; border-radius: 4px; pointer-events: none; }
+.tag-l { left: 8px; } .tag-r { right: 8px; }
+
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 14px; margin: 24px 0; }
+.stat { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; box-shadow: var(--shadow); }
+.stat .num { font: 600 28px/1.1 var(--serif); color: var(--accent); }
+.stat .lbl { font-size: 13px; color: var(--muted); margin-top: 4px; }
+
+footer { border-top: 1px solid var(--border); color: var(--muted); font-size: 14px; text-align: center; padding: 28px 16px; }
+
+@media (max-width: 1000px) {
+  .layout { grid-template-columns: minmax(0, 1fr); gap: 0; padding: 24px 16px 64px; }
+  nav.toc { display: none; }
+  .grid-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 620px) {
+  .grid-2, .grid-3 { grid-template-columns: minmax(0, 1fr); }
+  .hero { padding-top: 56px; }
+  h2 { font-size: 27px; }
+}
+.print-only, .print-img { display: none; }
+@page { margin: 12mm; }
+@media print {
+  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body { font-size: 10.5pt; background: #fff; color: #000; }
+  .hero { background: none; padding: 8px 0 20px; }
+  .hero .back, nav.toc, .compare-frame input { display: none; }
+  .print-only { display: inline; }
+  .print-img { display: block; }
+  .screen-only { display: none; }
+  .layout { display: block; padding: 0; }
+  h2 { margin-top: 36px; } h3 { margin-top: 28px; }
+  figure, .table-wrap, .callout, .stat { box-shadow: none; break-inside: avoid; }
+  h2, h3, h4 { break-after: avoid; }
+  .grid-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .compare-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+  .table-wrap { overflow: visible; }
+  th, td { padding: 3px 6px; font-size: 8.5pt; }
+  th { position: static; white-space: normal; }
+  .formula, pre.code { white-space: pre-wrap; }
+  .compare-frame img.after { position: static; clip-path: none; }
+  .compare-frame { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+  .compare-frame::after { display: none; }
+  /* never split an equation, a pair's system, a numbered step or a table row across pages */
+  .math { overflow: visible; }
+  .math, .keep, .steps li, tr { break-inside: avoid; }
+  a { color: inherit; text-decoration: none; }
+}
+/* Typeset math (KaTeX): display equations scroll sideways instead of overflowing on narrow screens */
+.math { overflow-x: auto; overflow-y: hidden; margin: 14px 0; padding: 4px 0; }
+.math .katex-display { margin: 0; }
+.math .katex { font-size: 1.05em; }
+td .katex { font-size: 0.95em; }
+/* A4 additions */
+.viewer { border: 1px solid var(--border); border-radius: 10px; box-shadow: var(--shadow); background: var(--surface); margin: 20px 0; overflow: hidden; }
+.viewer-head { display: flex; flex-wrap: wrap; gap: 8px 16px; justify-content: space-between; align-items: center; padding: 10px 14px; border-bottom: 1px solid var(--border); font-size: 14px; }
+.viewer-sub { color: var(--muted); }
+.viewer-controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: 13px; color: var(--muted); }
+.viewer-controls label { display: flex; align-items: center; gap: 6px; }
+.viewer-controls input[type=range] { width: 90px; accent-color: var(--accent); }
+.viewer-controls button { font: 500 13px var(--sans); color: var(--accent); background: var(--accent-soft); border: 1px solid var(--border); border-radius: 6px; padding: 5px 10px; cursor: pointer; }
+.viewer-controls button[aria-pressed=true] { background: var(--accent); color: #fff; }
+.viewer-canvas { position: relative; height: min(70vh, 560px); background: #fff; cursor: grab; touch-action: none; }
+.viewer-canvas:active { cursor: grabbing; }
+.viewer-canvas canvas { display: block; width: 100% !important; height: 100% !important; }
+.viewer-msg { position: absolute; inset: 0; display: grid; place-items: center; margin: 0; color: var(--muted); font-size: 14px; max-width: none; }
+.viewer-legend { display: flex; align-items: center; gap: 10px; padding: 8px 14px; border-top: 1px solid var(--border); font-size: 13px; color: var(--muted); }
+.viewer-ramp { flex: 0 1 220px; height: 10px; border-radius: 5px; background: linear-gradient(90deg, #0d366b, #184f95, #256abf, #3987e5, #6da7ec, #86b6ef); }
+@media print { .viewer { display: none; } }
+.code-block { margin: 18px 0; max-width: 100%; }
+.code-label { font-size: 13px; color: var(--muted); margin-bottom: 4px; }
+.code-label span { font-weight: 600; color: var(--accent); text-transform: uppercase; letter-spacing: .08em; margin-right: 8px; }
+.code-label code { background: none; padding: 0; }
+.code-block pre.code { margin-top: 0; max-height: none; }
+.hero-strip span { aspect-ratio: 4 / 3; background: #fff; }
+.hero-strip img { object-fit: contain; }
+table.checklist td { font-family: var(--sans); font-size: 14px; white-space: normal; }
+table.checklist td:first-child { white-space: nowrap; }
+.grid-3 figure img, .grid-2 figure img { width: 100%; }
+</style>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"
+  onload="renderMathInElement(document.body, {delimiters: [{left: '$$', right: '$$', display: true}, {left: '\\(', right: '\\)', display: false}]})"></script>
+</head>
+<body>
+
+<header class="hero">
+  <a class="back" href="../">&larr; All assignments</a>
+  <div class="kicker">SYDE 671 · Introduction to Computer Vision / Advanced Image Processing</div>
+  <h1>Assignment 4: Epipolar Geometry and Structure from Motion</h1>
+  <div class="byline">Ashley Li</div>
+  <div class="hero-strip">
+    <span><img src="results/images/p1_set1_normalized.png" alt="Epipolar lines from the normalized eight-point algorithm"></span>
+    <span><img src="results/images/p2_rectified.png" alt="Rectified image pair"></span>
+    <span><img src="results/images/p3_full.png" alt="Factorization reconstruction and ground truth"></span>
+    <span><img src="results/images/p4_statue_oblique.png" alt="Reconstructed statue point cloud"></span>
+  </div>
+</header>
+
+<div class="layout">
+<nav class="toc" aria-label="Contents">
+  <b>Overview</b>
+  <a href="#deliverables">Deliverables</a>
+  <b>1 · Fundamental matrix</b>
+  <a href="#lls">1(a–b) Eight-point (LLS)</a>
+  <a href="#normalized">1(c–d) Normalized eight-point</a>
+  <a href="#distance">1(e–f) Distance to epipolar lines</a>
+  <b>2 · Rectification</b>
+  <a href="#epipole">2(a–b) Epipoles and H₂</a>
+  <a href="#matching">2(c) Matching H₁</a>
+  <a href="#rectified">2(d) Rectified pair</a>
+  <b>3 · Factorization</b>
+  <a href="#factorization">3(a–b) Implementation</a>
+  <a href="#fullset">3(c–d) Full point set</a>
+  <a href="#subset">3(e–f) Subset of points</a>
+  <b>4 · Structure from motion</b>
+  <a href="#initialrt">4(a) Four R, T candidates</a>
+  <a href="#triangulation">4(b–d) Triangulation</a>
+  <a href="#choosert">4(e) Choosing R, T</a>
+  <a href="#statue">4(f) Statue reconstruction</a>
+</nav>
+
+<main>
+
+<!-- ================================================================ OVERVIEW -->
+<section id="overview">
+<h2 id="deliverables"><span class="part">Overview</span>Deliverables</h2>
+<div class="table-wrap"><table class="checklist">
+<thead><tr><th>Part</th><th>Required</th><th>Where</th></tr></thead>
+<tbody>
+<tr><td>1(a) code</td><td>lls_eight_point_alg() with rank-2 constraint</td><td><a href="#lls">1(a–b)</a></td></tr>
+<tr><td>1(b) report</td><td>F to ≥ 4 decimals + implementation</td><td><a href="#lls">1(a–b)</a></td></tr>
+<tr><td>1(c) code</td><td>normalized_eight_point_alg()</td><td><a href="#normalized">1(c–d)</a></td></tr>
+<tr><td>1(d) report</td><td>normalized F to ≥ 4 decimals</td><td><a href="#normalized">1(c–d)</a></td></tr>
+<tr><td>1(e) code</td><td>compute_distance_to_epipolar_lines()</td><td><a href="#distance">1(e–f)</a></td></tr>
+<tr><td>1(f) report</td><td>implementation of the distance</td><td><a href="#distance">1(e–f)</a></td></tr>
+<tr><td>2(a) code</td><td>compute_epipole()</td><td><a href="#epipole">2(a–b)</a></td></tr>
+<tr><td>2(b) code</td><td>compute_H() (find_H in the handout)</td><td><a href="#epipole">2(a–b)</a></td></tr>
+<tr><td>2(c) code</td><td>compute_matching_homographies()</td><td><a href="#matching">2(c)</a></td></tr>
+<tr><td>2(d) report</td><td>rectified pair + why rectification helps</td><td><a href="#rectified">2(d)</a></td></tr>
+<tr><td>3(a) code</td><td>factorization_method()</td><td><a href="#factorization">3(a–b)</a></td></tr>
+<tr><td>3(b) report</td><td>implementation</td><td><a href="#factorization">3(a–b)</a></td></tr>
+<tr><td>3(c) report</td><td>compare with ground truth, explain scale/rotation</td><td><a href="#fullset">3(c–d)</a></td></tr>
+<tr><td>3(d) report</td><td>4 singular values, why 4, ideal number</td><td><a href="#fullset">3(c–d)</a></td></tr>
+<tr><td>3(e) report</td><td>subset vs ground truth, why less similar</td><td><a href="#subset">3(e–f)</a></td></tr>
+<tr><td>3(f) report</td><td>new singular values, compare and explain</td><td><a href="#subset">3(e–f)</a></td></tr>
+<tr><td>4(a) code</td><td>estimate_initial_RT()</td><td><a href="#initialrt">4(a)</a></td></tr>
+<tr><td>4(b) code</td><td>linear_estimate_3d_point()</td><td><a href="#triangulation">4(b–d)</a></td></tr>
+<tr><td>4(c) code</td><td>reprojection_error(), jacobian()</td><td><a href="#triangulation">4(b–d)</a></td></tr>
+<tr><td>4(d) code</td><td>nonlinear_estimate_3d_point() (Gauss–Newton)</td><td><a href="#triangulation">4(b–d)</a></td></tr>
+<tr><td>4(e) code</td><td>estimate_RT_from_E()</td><td><a href="#choosert">4(e)</a></td></tr>
+<tr><td>4(f) report</td><td>final statue plot + why a house is harder</td><td><a href="#statue">4(f)</a></td></tr>
+</tbody></table></div>
+</section>
+
+<!-- ================================================================ PART 1 -->
+<section id="part1">
+<h2><span class="part">Problem one</span>Fundamental matrix estimation</h2>
+<p class="lead">Estimate F from point correspondences such that \(p'^\top F p = 0\), where \(p\) is a point in image 1 and
+\(p'\) its match in image 2, both in homogeneous pixel coordinates. Set 1 has 37 correspondences, set 2 has 46.</p>
+
+<h3 id="lls">1(a–b) Linear least-squares eight-point algorithm</h3>
+<p>Writing \(p = (u, v, 1)\), \(p' = (u', v', 1)\) and expanding \(p'^\top F p = 0\) gives one equation that is linear in
+the nine entries of F:</p>
+<div class="math">$$\begin{bmatrix} u'u & u'v & u' & v'u & v'v & v' & u & v & 1 \end{bmatrix}\mathbf{f} = 0,\qquad
+\mathbf{f} = (F_{11}, F_{12}, \dots, F_{33})^\top$$</div>
+<ol class="steps">
+  <li><b>Build W.</b> Stack one row per correspondence into an N × 9 matrix W (N ≥ 8).</li>
+  <li><b>Solve W f = 0 by least squares.</b> To avoid the trivial solution, minimise \(\lVert W\mathbf{f}\rVert\) subject to
+      \(\lVert\mathbf{f}\rVert = 1\). The minimiser is the right singular vector of W with the smallest singular value (last
+      row of \(V^\top\)), reshaped to the 3 × 3 matrix \(\hat F\).</li>
+  <li><b>Enforce rank 2.</b> A true fundamental matrix is singular, but noise makes \(\hat F\) full rank. Take
+      \(\hat F = U\,\mathrm{diag}(\sigma_1,\sigma_2,\sigma_3)\,V^\top\) and return
+      \(F = U\,\mathrm{diag}(\sigma_1,\sigma_2,0)\,V^\top\), the closest rank-2 matrix in Frobenius norm.</li>
+</ol>
+<!-- code:start 1(a) -->
+<div class="code-block"><div class="code-label"><span>Code · 1(a)</span><code>SourceCode/p1.py</code> · <code>lls_eight_point_alg()</code></div><pre class="code"><code>def lls_eight_point_alg(points1, points2):
+    # Each correspondence p&#x27; = (u&#x27;, v&#x27;, 1), p = (u, v, 1) gives one linear
+    # equation p&#x27;^T F p = 0 in the 9 entries of F (row-major):
+    #   [u&#x27;u, u&#x27;v, u&#x27;, v&#x27;u, v&#x27;v, v&#x27;, u, v, 1] . f = 0
+    u1, v1 = points1[:, 0], points1[:, 1]
+    u2, v2 = points2[:, 0], points2[:, 1]
+    ones = np.ones(points1.shape[0])
+    W = np.column_stack([u2*u1, u2*v1, u2, v2*u1, v2*v1, v2, u1, v1, ones])
+
+    # Least-squares solution of W f = 0 with ||f|| = 1: the right singular
+    # vector associated with the smallest singular value.
+    _, _, Vt = np.linalg.svd(W)
+    F_hat = Vt[-1].reshape(3, 3)
+
+    # Enforce the rank-two constraint (PDF 1(a)): zero out the smallest
+    # singular value of F_hat.
+    U, S, Vt = np.linalg.svd(F_hat)
+    S[2] = 0
+    F = U.dot(np.diag(S)).dot(Vt)
+    return F</code></pre></div>
+<!-- code:end -->
+<p><b>Resulting fundamental matrices</b> (scale is arbitrary; here \(\lVert F\rVert_F = 1\)):</p>
+<div class="math">$$F_{\text{LLS}}^{\text{set 1}} = \begin{bmatrix}1.5522\times10^{-6} & -8.1816\times10^{-6} & -1.5044\times10^{-3} \\ -5.8700\times10^{-6} & -3.0289\times10^{-7} & -1.1361\times10^{-2} \\ -3.5231\times10^{-3} & 1.4145\times10^{-2} & 0.9998\end{bmatrix}$$</div>
+<div class="math">$$F_{\text{LLS}}^{\text{set 2}} = \begin{bmatrix}-5.6309\times10^{-6} & 2.7498\times10^{-5} & -6.4265\times10^{-3} \\ -2.7762\times10^{-5} & -6.7475\times10^{-6} & 1.5218\times10^{-2} \\ 1.0762\times10^{-2} & -1.2252\times10^{-2} & -0.9997\end{bmatrix}$$</div>
+<p>The singular values of \(F_{\text{LLS}}^{\text{set 1}}\) are \(1.0,\ 1.67\times10^{-4},\ 6.7\times10^{-19}\), so the
+rank-2 constraint holds to machine precision.</p>
+
+<h3 id="normalized">1(c–d) Normalized eight-point algorithm</h3>
+<p>In raw pixels the columns of W differ hugely in magnitude (\(u'u \approx 10^5\) against the constant 1), so W is badly
+conditioned and the smallest singular vector is dominated by noise. The normalized algorithm fixes this by conditioning
+the points first:</p>
+<ol class="steps">
+  <li><b>Normalize each image separately.</b> Translate the centroid \(\bar{\mathbf{x}}\) to the origin and scale by
+      \(s = \sqrt{2 / \tfrac{1}{N}\sum_i \lVert\mathbf{x}_i - \bar{\mathbf{x}}\rVert^2}\), so the mean squared distance from
+      the origin is 2:
+      $$T = \begin{bmatrix} s & 0 & -s\bar x \\ 0 & s & -s\bar y \\ 0 & 0 & 1 \end{bmatrix},\qquad q_i = T_1 p_i,\quad q'_i = T_2 p'_i$$</li>
+  <li><b>Run the eight-point algorithm</b> of 1(a), including the rank-2 step, on \(q_i, q'_i\) to get \(F_q\).</li>
+  <li><b>De-normalize.</b> Since \(q'^\top F_q q = p'^\top (T_2^\top F_q T_1) p\), return \(F = T_2^\top F_q T_1\), which is
+      still rank 2.</li>
+</ol>
+<!-- code:start 1(c) -->
+<div class="code-block"><div class="code-label"><span>Code · 1(c)</span><code>SourceCode/p1.py</code> · <code>normalized_eight_point_alg()</code></div><pre class="code"><code>def normalized_eight_point_alg(points1, points2):
+    # Normalizing transform: translate the centroid to the origin and scale
+    # so that the mean squared distance from the origin is 2.
+    def normalization_matrix(points):
+        centroid = points[:, :2].mean(axis=0)
+        centered = points[:, :2] - centroid
+        scale = np.sqrt(2.0 / np.mean(np.sum(centered**2, axis=1)))
+        return np.array([[scale, 0, -scale*centroid[0]],
+                         [0, scale, -scale*centroid[1]],
+                         [0, 0, 1]])
+
+    T1 = normalization_matrix(points1)
+    T2 = normalization_matrix(points2)
+    q1 = T1.dot(points1.T).T
+    q2 = T2.dot(points2.T).T
+
+    # Run the eight point algorithm (including the rank-two constraint via
+    # SVD) on the normalized points.
+    Fq = lls_eight_point_alg(q1, q2)
+
+    # De-normalize: q2^T Fq q1 = p2^T (T2^T Fq T1) p1
+    F = T2.T.dot(Fq).dot(T1)
+    return F</code></pre></div>
+<!-- code:end -->
+<p><b>Resulting fundamental matrices:</b></p>
+<div class="math">$$F_{\text{norm}}^{\text{set 1}} = \begin{bmatrix}6.5211\times10^{-7} & -5.3362\times10^{-6} & 8.8086\times10^{-5} \\ -4.9124\times10^{-6} & -3.4042\times10^{-7} & -6.4381\times10^{-3} \\ -8.5614\times10^{-4} & 8.8421\times10^{-3} & 0.1460\end{bmatrix}$$</div>
+<div class="math">$$F_{\text{norm}}^{\text{set 2}} = \begin{bmatrix}-1.5101\times10^{-7} & 2.5162\times10^{-6} & -1.5613\times10^{-4} \\ 3.6346\times10^{-6} & 3.2231\times10^{-7} & 7.0259\times10^{-3} \\ 2.3616\times10^{-4} & -8.5300\times10^{-3} & -2.4588\times10^{-3}\end{bmatrix}$$</div>
+<p>The script's check \(\max_i |p_i'^\top F p_i|\) is \(3.03\times10^{-2}\) (set 1) and \(3.31\times10^{-2}\) (set 2).</p>
+
+<h3 id="distance">1(e–f) Distance to epipolar lines</h3>
+<p><b>Implementation.</b> For the points in image 1, each match \(p'_i\) in image 2 defines the epipolar line
+\(\ell_i = F^\top p'_i = (a_i, b_i, c_i)^\top\) in image 1 (the same lines the plotting code draws). The perpendicular
+distance from \(p_i = (x_i, y_i, 1)\) to that line, and the returned average, are</p>
+<div class="math">$$d_i = \frac{|\ell_i^\top p_i|}{\sqrt{a_i^2 + b_i^2}} = \frac{|a_i x_i + b_i y_i + c_i|}{\sqrt{a_i^2 + b_i^2}},\qquad
+\bar d = \frac{1}{N}\sum_{i=1}^{N} d_i$$</div>
+<p>All lines are computed at once as the 3 × N matrix \(F^\top P'^\top\). Dividing by \(\sqrt{a^2+b^2}\) makes the result
+a distance in pixels, independent of the arbitrary scale of F. The distance in image 2 uses the same function with the
+arguments swapped and \(F^\top\), so the lines become \(F p_i\).</p>
+
+<!-- code:start 1(e) -->
+<div class="code-block"><div class="code-label"><span>Code · 1(e)</span><code>SourceCode/p1.py</code> · <code>compute_distance_to_epipolar_lines()</code></div><pre class="code"><code>def compute_distance_to_epipolar_lines(points1, points2, F):
+    # Epipolar lines in image 1 induced by points2: l = F^T p2 = (a, b, c)
+    lines = F.T.dot(points2.T)          # 3 x N
+    a, b = lines[0], lines[1]
+
+    # Point-to-line distance |a x + b y + c| / sqrt(a^2 + b^2), with p1
+    # in homogeneous coordinates (x, y, 1).
+    numer = np.abs(np.sum(lines * points1.T, axis=0))
+    distances = numer / np.sqrt(a**2 + b**2)
+    average_distance = np.mean(distances)
+    return average_distance</code></pre></div>
+<!-- code:end -->
+<div class="table-wrap"><table>
+<thead><tr><th>Set</th><th>Method</th><th>Mean distance, image 1 (px)</th><th>Mean distance, image 2 (px)</th></tr></thead>
+<tbody>
+<tr><td>Set 1</td><td>LLS eight-point</td><td>28.0257</td><td>25.1629</td></tr>
+<tr><td>Set 1</td><td>Normalized eight-point</td><td>0.8906</td><td>0.8288</td></tr>
+<tr><td>Set 2</td><td>LLS eight-point</td><td>9.7014</td><td>14.5682</td></tr>
+<tr><td>Set 2</td><td>Normalized eight-point</td><td>0.8895</td><td>0.8917</td></tr>
+</tbody></table></div>
+<p>Normalization reduces the error by a factor of 11 to 32: every point lies within about one pixel of its epipolar line.
+The figures show this. With LLS (left) many points sit visibly off their red lines; with the normalized F (right) the
+lines pass through the points.</p>
+<div class="grid-2">
+  <figure class="plain"><a href="results/images/p1_set1_lls.png" target="_blank" rel="noopener"><img src="results/images/p1_set1_lls.png" alt="Set 1, LLS epipolar lines"></a><figcaption><b>Set 1, LLS</b> 28.03 / 25.16 px</figcaption></figure>
+  <figure class="plain"><a href="results/images/p1_set1_normalized.png" target="_blank" rel="noopener"><img src="results/images/p1_set1_normalized.png" alt="Set 1, normalized epipolar lines"></a><figcaption><b>Set 1, normalized</b> 0.89 / 0.83 px</figcaption></figure>
+  <figure class="plain"><a href="results/images/p1_set2_lls.png" target="_blank" rel="noopener"><img src="results/images/p1_set2_lls.png" alt="Set 2, LLS epipolar lines"></a><figcaption><b>Set 2, LLS</b> 9.70 / 14.57 px</figcaption></figure>
+  <figure class="plain"><a href="results/images/p1_set2_normalized.png" target="_blank" rel="noopener"><img src="results/images/p1_set2_normalized.png" alt="Set 2, normalized epipolar lines"></a><figcaption><b>Set 2, normalized</b> 0.89 / 0.89 px</figcaption></figure>
+</div>
+</section>
+
+<!-- ================================================================ PART 2 -->
+<section id="part2">
+<h2><span class="part">Problem two</span>Matching homographies for image rectification</h2>
+<p class="lead">Find homographies H₁, H₂ that make all epipolar lines horizontal and put matching points on the same row.
+Data: set 1 (two 512 × 512 images), with F from the normalized eight-point algorithm.</p>
+
+<h3 id="epipole">2(a–b) Epipoles and the homography H₂</h3>
+<p><b>compute_epipole(F).</b> With \(p'^\top F p = 0\), every epipolar line \(Fp\) in image 2 passes through the epipole
+\(e'\), so \(e'^\top F p = 0\) for all p, i.e. \(F^\top e' = 0\). The epipole is the null vector of \(F^\top\): the last
+right singular vector of \(F^\top\), divided by its third entry to give \([x\ y\ 1]\). The script calls it with \(F^\top\)
+for image 1 and with F for image 2:</p>
+<!-- code:start 2(a) -->
+<div class="code-block"><div class="code-label"><span>Code · 2(a)</span><code>SourceCode/p2.py</code> · <code>compute_epipole()</code></div><pre class="code"><code>def compute_epipole(F):
+    # PDF 2(a): the epipole satisfies F^T e = 0, i.e. e spans the null space
+    # of F^T. Take the right singular vector of F^T for the smallest singular
+    # value and scale it to homogeneous form [x y 1].
+    _, _, Vt = np.linalg.svd(F.T)
+    e = Vt[-1]
+    epipole = e / e[2]
+    return epipole</code></pre></div>
+<!-- code:end -->
+<div class="math">$$e_1 = (-1300.71,\ -142.45,\ 1),\qquad e_2 = (1654.12,\ 45.30,\ 1)$$</div>
+<p>Both epipoles lie far outside the 512 × 512 images, to the left and right, so within each image the
+epipolar lines are nearly parallel and fan out only slightly.</p>
+
+<p><b>compute_H(e, im)</b> (called <code>find_H()</code> in the handout) builds \(H_2 = T^{-1} G R T\) exactly as given:</p>
+<ol class="steps">
+  <li><b>T</b> translates the image centre \((\tfrac{w}{2}, \tfrac{h}{2})\) to the origin.</li>
+  <li><b>R</b> rotates the translated epipole \(Te = (e_1, e_2, 1)\) onto the horizontal axis, using
+      \(\alpha = 1\) if \(e_1 \ge 0\), else \(-1\). The rotated epipole is \((f, 0, 1)\) with
+      \(f = \alpha\sqrt{e_1^2 + e_2^2}\).</li>
+  <li><b>G</b>, with \(-1/f\) in the bottom-left entry, sends \((f, 0, 1)\) to the point at infinity \((f, 0, 0)\).</li>
+  <li><b>\(T^{-1}\)</b> moves the origin back.</li>
+</ol>
+<!-- code:start 2(b) -->
+<div class="code-block"><div class="code-label"><span>Code · 2(b)</span><code>SourceCode/p2.py</code> · <code>compute_H()</code></div><pre class="code"><code>def compute_H(e, im):
+    # PDF 2(b) (&quot;find_H&quot;): H = T^-1 G R T
+    height, width = im.shape[0], im.shape[1]
+
+    # 1. Translate the image center to the origin.
+    T = np.array([[1, 0, -width / 2.0],
+                  [0, 1, -height / 2.0],
+                  [0, 0, 1]])
+
+    # 2. Rotate the translated epipole Te = (e1, e2, 1) onto the
+    #    horizontal axis at (f, 0, 1).
+    Te = T.dot(e)
+    Te = Te / Te[2]
+    e1, e2 = Te[0], Te[1]
+    alpha = 1.0 if e1 &gt;= 0 else -1.0
+    norm = np.sqrt(e1**2 + e2**2)
+    R = np.array([[ alpha * e1 / norm, alpha * e2 / norm, 0],
+                  [-alpha * e2 / norm, alpha * e1 / norm, 0],
+                  [0, 0, 1]])
+
+    # 3. Send (f, 0, 1) to the point at infinity (f, 0, 0).
+    f = R.dot(Te)[0]
+    G = np.array([[1, 0, 0],
+                  [0, 1, 0],
+                  [-1.0 / f, 0, 1]])
+
+    # 4. Undo the translation.
+    H = np.linalg.inv(T).dot(G).dot(R).dot(T)
+    return H</code></pre></div>
+<!-- code:end -->
+<p>Check: \(H_2 e_2 = (1413.91,\ 0,\ 0)\), a point at infinity on the horizontal axis, as required.</p>
+
+<h3 id="matching">2(c) Matching homography H₁</h3>
+<p>H₁ must also send its epipole to horizontal infinity and, in addition, align matched points as closely as possible:
+\(\arg\min_{H_1}\sum_i \lVert H_1 p_i - H_2 p'_i\rVert^2\). With \(H_1 = H_A H_2 M\):</p>
+<ol class="steps">
+  <li><b>H₂</b> = compute_H(e₂, im₂) from 2(b).</li>
+  <li><b>M</b> = \([e]_\times F + e v^\top\) with \(v^\top = [1\ 1\ 1]\), where \(e = e_2\) and
+      \([e]_\times = \begin{bmatrix} 0 & -e_z & e_y \\ e_z & 0 & -e_x \\ -e_y & e_x & 0 \end{bmatrix}\) is its cross-product matrix.</li>
+  <li><b>Transform the points:</b> \(\hat p_i = H_2 M p_i\) and \(\hat p'_i = H_2 p'_i\), each divided by its third
+      coordinate.</li>
+  <li><b>Solve W a = b by least squares</b> (37 × 3 system) with rows \([\hat x_i\ \ \hat y_i\ \ 1]\) and
+      \(b_i = \hat x'_i\). Because H₂ and H₂M already give matching rows, H_A only has to correct x.</li>
+  <li><b>Assemble</b> \(H_A = \begin{bmatrix} a_1 & a_2 & a_3 \\ 0 & 1 & 0 \\ 0 & 0 & 1 \end{bmatrix}\) and return
+      \(H_1 = H_A H_2 M\) together with H₂.</li>
+</ol>
+<!-- code:start 2(c) -->
+<div class="code-block"><div class="code-label"><span>Code · 2(c)</span><code>SourceCode/p2.py</code> · <code>compute_matching_homographies()</code></div><pre class="code"><code>def compute_matching_homographies(e2, F, im2, points1, points2):
+    # PDF 2(c): first H2 maps the epipole e2 to infinity.
+    H2 = compute_H(e2, im2)
+
+    # M = [e]_x F + e v^T, with v^T = [1 1 1]
+    e_cross = np.array([[0, -e2[2], e2[1]],
+                        [e2[2], 0, -e2[0]],
+                        [-e2[1], e2[0], 0]])
+    v = np.ones(3)
+    M = e_cross.dot(F) + np.outer(e2, v)
+
+    # Transformed points: p_hat = H2 M p (image 1), p_hat&#x27; = H2 p&#x27; (image 2)
+    p_hat = H2.dot(M).dot(points1.T)
+    p_hat = p_hat / p_hat[2]
+    p_hat_prime = H2.dot(points2.T)
+    p_hat_prime = p_hat_prime / p_hat_prime[2]
+
+    # Solve W a = b in the least-squares sense, where each row of W is
+    # [x_hat, y_hat, 1] and b holds the matching x_hat&#x27;.
+    W = np.column_stack([p_hat[0], p_hat[1], np.ones(p_hat.shape[1])])
+    b = p_hat_prime[0]
+    a = np.linalg.lstsq(W, b, rcond=None)[0]
+
+    H_A = np.array([[a[0], a[1], a[2]],
+                    [0, 1, 0],
+                    [0, 0, 1]])
+    H1 = H_A.dot(H2).dot(M)
+    return H1, H2</code></pre></div>
+<!-- code:end -->
+<div class="math">$$H_1 = \begin{bmatrix}-12.0006 & -4.1550 & -123.4769 \\ 1.4101 & -14.8704 & -284.1775 \\ -9.2189\times10^{-3} & -2.1918\times10^{-3} & -12.3033\end{bmatrix},\qquad
+H_2 = \begin{bmatrix}0.8098 & -0.1220 & 79.9331 \\ -3.0019\times10^{-2} & 1.0158 & 3.6360 \\ -6.9936\times10^{-4} & 1.0539\times10^{-4} & 1.1521\end{bmatrix}$$</div>
+<p>Checks: \(H_1 e_1 \propto (1, 0, 0)\), so the image 1 epipole also goes to horizontal infinity. The mean vertical offset
+between matched points is <b>33.52 px before</b> and <b>0.86 px after</b> rectification (maximum 3.87 px).</p>
+
+<h3 id="rectified">2(d) Rectified image pair</h3>
+<figure class="plain wide"><a href="results/images/p2_rectified.png" target="_blank" rel="noopener"><img src="results/images/p2_rectified.png" alt="Rectified image pair with horizontal epipolar lines"></a><figcaption><b>Rectified set 1</b> Images warped by H₁ (left) and H₂ (right); red lines are epipolar lines recomputed from the rectified points, blue stars the correspondences.</figcaption></figure>
+<p><b>Why rectification makes correspondence easier.</b> After rectification the epipolar lines are horizontal and
+corresponding points share the same row (here to within 0.86 px on average). So for a point \((x, y)\) in one image, its
+match must lie on row y of the other image:</p>
+<ul>
+  <li><b>2D search becomes 1D.</b> The match is found by scanning a single row instead of the whole image, with no
+      slanted epipolar line to compute and sample for each point.</li>
+  <li><b>Fewer false matches.</b> Restricting candidates to one row rules out look-alike features elsewhere in the image.</li>
+  <li><b>Disparity is a single number.</b> The horizontal offset \(x - x'\) directly measures the disparity, which is what
+      stereo matching and depth estimation use.</li>
+</ul>
+</section>
+
+<!-- ================================================================ PART 3 -->
+<section id="part3">
+<h2><span class="part">Problem three</span>The factorization method</h2>
+<p class="lead">Tomasi–Kanade affine structure from motion: recover the 3D points and the affine cameras from point tracks in
+m = 2 images (set 1), and compare with the ground-truth 3D points.</p>
+
+<h3 id="factorization">3(a–b) Implementation</h3>
+<ol class="steps">
+  <li><b>Remove translation.</b> Use the (x, y) coordinates only and subtract each image's centroid. Under an affine
+      camera the centroid of the 3D points projects to the centroid of the image points, so centering removes the camera
+      translation.</li>
+  <li><b>Measurement matrix.</b> Stack the centered coordinates into the 2m × n = 4 × 37 matrix
+      $$D = \begin{bmatrix} \tilde x^{(1)}_1 & \cdots & \tilde x^{(1)}_n \\ \tilde y^{(1)}_1 & \cdots & \tilde y^{(1)}_n \\ \tilde x^{(2)}_1 & \cdots & \tilde x^{(2)}_n \\ \tilde y^{(2)}_1 & \cdots & \tilde y^{(2)}_n \end{bmatrix} = M S$$
+      where M (4 × 3) holds the affine cameras and S (3 × n) the 3D points, so ideally rank(D) = 3.</li>
+  <li><b>SVD.</b> Compute \(D = U\Sigma V^\top\) and print the singular values (used in 3(d) and 3(f)).</li>
+  <li><b>Rank-3 factorization.</b> Keep the three largest singular values and split them evenly:
+      \(M = U_3\Sigma_3^{1/2}\) (motion) and \(S = \Sigma_3^{1/2}V_3^\top\) (structure). \(MS\) is the best rank-3
+      approximation of D.</li>
+</ol>
+
+<!-- code:start 3(a) -->
+<div class="code-block"><div class="code-label"><span>Code · 3(a)</span><code>SourceCode/p3.py</code> · <code>factorization_method()</code></div><pre class="code"><code>def factorization_method(points_im1, points_im2):
+    # Use only the inhomogeneous (x, y) image coordinates.
+    x1 = points_im1[:, :2]
+    x2 = points_im2[:, :2]
+
+    # 1. Center the points in each image on their centroid; this removes
+    #    the translation component of the affine cameras.
+    x1_centered = x1 - x1.mean(axis=0)
+    x2_centered = x2 - x2.mean(axis=0)
+
+    # 2. Build the 2m x n measurement matrix D (m = 2 cameras, n points):
+    #    rows are x and y of image 1, then x and y of image 2.
+    D = np.vstack((x1_centered.T, x2_centered.T))
+
+    # 3. SVD of D. In the ideal (noise-free affine) case D has rank 3.
+    U, S, Vt = np.linalg.svd(D)
+    print(&quot;Singular values of D:&quot;, S)
+
+    # 4. Keep the rank-3 part and split the singular values evenly:
+    #    D ~= M S, with M = U3 sqrt(W3) (motion, 2m x 3) and
+    #    S = sqrt(W3) V3^T (structure, 3 x n).
+    U3 = U[:, :3]
+    W3 = np.diag(S[:3])
+    V3t = Vt[:3, :]
+    motion = U3.dot(np.sqrt(W3))
+    structure = np.sqrt(W3).dot(V3t)
+    return structure, motion</code></pre></div>
+<!-- code:end -->
+<h3 id="fullset">3(c–d) Full point set: comparison and singular values</h3>
+<figure class="plain wide"><a href="results/images/p3_full.png" target="_blank" rel="noopener"><img src="results/images/p3_full.png" alt="Factorization reconstruction next to ground truth, full set"></a><figcaption><b>Set 1, all 37 points</b> Factorization result (left) and ground truth (right).</figcaption></figure>
+<p><b>3(c) Why the result differs by a scaling and rotation.</b> The two point clouds have the same shape, but different
+size and orientation. This is because the factorization \(D = MS\) is not unique: for any invertible 3 × 3 matrix Q,</p>
+<div class="math">$$D = M S = (M Q)(Q^{-1} S)$$</div>
+<p>fits the images equally well. The method has no information about the world coordinate frame, so:</p>
+<ul>
+  <li><b>Rotation:</b> the axes of S are the singular vectors chosen by the SVD, not the ground-truth axes.</li>
+  <li><b>Scale:</b> splitting Σ as \(\Sigma^{1/2}\cdot\Sigma^{1/2}\) is an arbitrary choice; any other split rescales S.</li>
+  <li><b>Translation:</b> centering puts the reconstruction's centroid at the origin, while the ground truth is not
+      centered.</li>
+</ul>
+<p>In general Q can also contain shear, so the reconstruction is defined only up to an affine transformation. Removing
+this ambiguity would require metric constraints on the camera rows of M, which the basic method does not impose. To check
+the shape, I fitted the best 3D affine map from the reconstruction to the ground truth. The remaining RMS error is 1.06,
+against a ground-truth RMS spread of 11.60 (9%). The residual is due to the cameras being perspective rather than
+affine.</p>
+
+<p><b>3(d) Singular values of D:</b></p>
+<div class="math">$$\sigma_1 = 959.59,\quad \sigma_2 = 540.48,\quad \sigma_3 = 184.43,\quad \sigma_4 = 27.92$$</div>
+<ul>
+  <li><b>Why four non-zero values:</b> D is 4 × 37, so it has at most four singular values. With real data all four are
+      non-zero because the measurements do not fit the rank-3 model exactly: the images come from a perspective camera,
+      which the affine model only approximates, and the point locations contain noise.</li>
+  <li><b>Ideal case: three non-zero values.</b> For noise-free affine cameras \(D = MS\), with M of size 4 × 3 and S of size
+      3 × n (the scene is three-dimensional), so rank(D) ≤ 3 and \(\sigma_4 = 0\). Here σ₄ is much smaller than σ₃
+      (27.9 against 184.4), so D is close to rank 3 and keeping three values is justified.</li>
+</ul>
+
+<h3 id="subset">3(e–f) Subset of points</h3>
+<figure class="plain wide"><a href="results/images/p3_subset.png" target="_blank" rel="noopener"><img src="results/images/p3_subset.png" alt="Factorization reconstruction next to ground truth, subset"></a><figcaption><b>Set 1 subset, 18 points</b> Factorization result (left) and ground truth (right).</figcaption></figure>
+<p><b>3(e) Why the result is no longer as similar.</b> The subset's 18 points are almost coplanar. The singular values of
+the centered ground-truth points are 17.28, 14.18 and only 0.38, compared with 52.28, 41.19 and 23.45 for the full set.
+This has three consequences:</p>
+<ul>
+  <li><b>Almost no depth information.</b> Points on a plane give a measurement matrix that is essentially rank 2. The
+      images contain almost nothing about the direction perpendicular to the plane.</li>
+  <li><b>The third axis is fitted to noise.</b> Its singular value (7.22) is barely larger than the noise level set by
+      σ₄ = 5.13. The third row of S, which is the out-of-plane coordinate of each point, is therefore mostly noise.</li>
+  <li><b>Noise is amplified into false depth.</b> Because \(S = \Sigma_3^{1/2} V_3^\top\), the out-of-plane spread
+      relative to the in-plane spread is \(\sqrt{7.22/264.54} \approx 0.17\), against about 0.02 in the ground truth.
+      This is why the points look roughly right from one viewpoint but do not lie on a clean plane when the plot is
+      rotated.</li>
+</ul>
+<p>The in-plane layout is still recovered. The best affine map from the reconstruction to the ground truth leaves an RMS
+error of only 0.12 (spread 5.27), because that map can simply flatten the noisy third axis. What is wrong is the
+out-of-plane coordinate. Having fewer points (18 instead of 37) also means less noise is averaged out.</p>
+
+<p><b>3(f) New singular values, compared with the full set:</b></p>
+<div class="table-wrap"><table>
+<thead><tr><th>Points</th><th>σ₁</th><th>σ₂</th><th>σ₃</th><th>σ₄</th><th>σ₃ / σ₁</th><th>σ₃ / σ₄</th></tr></thead>
+<tbody>
+<tr><td>Full set (37)</td><td>959.59</td><td>540.48</td><td>184.43</td><td>27.92</td><td>0.192</td><td>6.6</td></tr>
+<tr><td>Subset (18)</td><td>264.54</td><td>210.06</td><td>7.22</td><td>5.13</td><td>0.027</td><td>1.4</td></tr>
+</tbody></table></div>
+<ul>
+  <li><b>All values are smaller.</b> This is expected: \(\sum\sigma_i^2 = \lVert D\rVert_F^2\) grows with the number of
+      points and their spread, and the subset has fewer points spread over a smaller area.</li>
+  <li><b>The major change is σ₃ collapsing.</b> Relative to σ₁ it falls from 0.19 to 0.027, and it is now almost equal to
+      σ₄ (ratio 1.4 against 6.6). With the full set there is a clear gap between the three structure values and the noise
+      value. With the subset, D is effectively rank 2: the third (depth) dimension cannot be separated from noise, which
+      explains the poor reconstruction in 3(e).</li>
+</ul>
+</section>
+
+<!-- ================================================================ PART 4 -->
+<section id="part4">
+<h2><span class="part">Problem four</span>Triangulation in structure from motion</h2>
+<p class="lead">Projective structure from motion on the 5-image statue sequence: recover R, T between cameras from the
+essential matrix, triangulate points linearly and then nonlinearly, and run the full pipeline.</p>
+
+<h3 id="initialrt">4(a) The four R, T candidates</h3>
+<p>The essential matrix is \(E = K^\top F K\) with \(K = \mathrm{diag}(719.5459,\ 719.5459,\ 1)\). With
+\(E = UDV^\top\):</p>
+<ol class="steps">
+  <li><b>Rotation.</b> \(Q_1 = UWV^\top\) and \(Q_2 = UW^\top V^\top\), with
+      \(W = \begin{bmatrix} 0 & -1 & 0 \\ 1 & 0 & 0 \\ 0 & 0 & 1 \end{bmatrix}\). The factorization only guarantees
+      that Q is orthogonal, so \(R_k = \det(Q_k)\,Q_k\) makes \(\det R_k = +1\).</li>
+  <li><b>Translation.</b> \(T = \pm u_3\), the third column of U (the direction is known only up to sign and scale).</li>
+  <li><b>Output.</b> Return the 4 × 3 × 4 tensor \([R_1|u_3],\ [R_1|-u_3],\ [R_2|u_3],\ [R_2|-u_3]\).</li>
+</ol>
+<!-- code:start 4(a) -->
+<div class="code-block"><div class="code-label"><span>Code · 4(a)</span><code>SourceCode/p4.py</code> · <code>estimate_initial_RT()</code></div><pre class="code"><code>def estimate_initial_RT(E):
+    # PDF 4(a): E = U D V^T = M Q with M = U Z U^T and Q = U W V^T or U W^T V^T
+    U, _, Vt = np.linalg.svd(E)
+    W = np.array([[0, -1, 0],
+                  [1, 0, 0],
+                  [0, 0, 1]])
+
+    # 1. Q is only guaranteed orthogonal; R = det(Q) Q makes it a rotation.
+    Q1 = U.dot(W).dot(Vt)
+    Q2 = U.dot(W.T).dot(Vt)
+    R1 = np.linalg.det(Q1) * Q1
+    R2 = np.linalg.det(Q2) * Q2
+
+    # 2. T is +/- u3, the third column of U.
+    T = U[:, 2]
+
+    RT = np.array([np.column_stack((R1, T)),
+                   np.column_stack((R1, -T)),
+                   np.column_stack((R2, T)),
+                   np.column_stack((R2, -T))])
+    return RT</code></pre></div>
+<!-- code:end -->
+<p>The third candidate, \([R_2\,|\,u_3]\), matches the example RT given in the script to four decimals:</p>
+<div class="math">$$[R_2\,|\,u_3] = \begin{bmatrix}0.9736 & -0.0988 & -0.2056 & 0.9994 \\ 0.1019 & 0.9948 & 0.0045 & -0.0089 \\ 0.2041 & -0.0254 & 0.9786 & 0.0331\end{bmatrix}$$</div>
+
+<h3 id="triangulation">4(b–d) Linear and nonlinear triangulation</h3>
+<p><b>4(b) Linear estimate (DLT).</b> For each camera i with matrix \(M_i\) (rows \(m_i^{k\top}\)) and measured point
+\((p_{i,1}, p_{i,2})\), the constraint \(p_i \times M_i P = 0\) gives two linear rows. Stacking them for all n images
+gives the 2n × 4 matrix</p>
+<div class="math">$$A = \begin{bmatrix} p_{1,1}m_1^{3\top} - m_1^{1\top} \\ p_{1,2}m_1^{3\top} - m_1^{2\top} \\ \vdots \\ p_{n,1}m_n^{3\top} - m_n^{1\top} \\ p_{n,2}m_n^{3\top} - m_n^{2\top} \end{bmatrix},\qquad A P = 0$$</div>
+<p>P is the right singular vector of A with the smallest singular value, divided by its fourth coordinate.</p>
+
+<!-- code:start 4(b) -->
+<div class="code-block"><div class="code-label"><span>Code · 4(b)</span><code>SourceCode/p4.py</code> · <code>linear_estimate_3d_point()</code></div><pre class="code"><code>def linear_estimate_3d_point(image_points, camera_matrices):
+    # PDF 4(b): for each image i stack the two rows
+    #   p_i1 m_i^3T - m_i^1T  and  p_i2 m_i^3T - m_i^2T
+    # into A, then solve A P = 0 with SVD.
+    A = []
+    for p, M in zip(image_points, camera_matrices):
+        A.append(p[0] * M[2] - M[0])
+        A.append(p[1] * M[2] - M[1])
+    A = np.array(A)
+
+    _, _, Vt = np.linalg.svd(A)
+    P = Vt[-1]
+    point_3d = P[:3] / P[3]
+    return point_3d</code></pre></div>
+<!-- code:end -->
+<p><b>4(c) Reprojection error and Jacobian.</b> For camera i, \(y = M_i P\) (with P in homogeneous form),
+\(p'_i = (y_1/y_3,\ y_2/y_3)\) and \(e_i = p'_i - p_i\). The errors of all K cameras are stacked into a 2K vector. By the
+quotient rule, each camera contributes two rows of the 2K × 3 Jacobian:</p>
+<div class="math">$$\frac{\partial e_{i,k}}{\partial P_j} = \frac{M_i[k,j]\,y_3 - y_k\,M_i[3,j]}{y_3^2},\qquad k \in \{1, 2\},\ j \in \{1, 2, 3\}$$</div>
+
+<!-- code:start 4(c) -->
+<div class="code-block"><div class="code-label"><span>Code · 4(c)</span><code>SourceCode/p4.py</code> · <code>reprojection_error()</code></div><pre class="code"><code>def reprojection_error(point_3d, image_points, camera_matrices):
+    # PDF 4(c): y = M_i P, p&#x27;_i = (y1, y2) / y3, e_i = p&#x27;_i - p_i
+    P = np.append(point_3d, 1)
+    error = []
+    for p, M in zip(image_points, camera_matrices):
+        y = M.dot(P)
+        p_proj = y[:2] / y[2]
+        error.extend(p_proj - p)
+    return np.array(error)</code></pre></div>
+<div class="code-block"><div class="code-label"><span>Code · 4(c)</span><code>SourceCode/p4.py</code> · <code>jacobian()</code></div><pre class="code"><code>def jacobian(point_3d, camera_matrices):
+    # PDF 4(c): J is 2K x 3. For camera i with y = M_i P,
+    #   e = (y1/y3, y2/y3) - p  =&gt;  d(y_k/y3)/dP_j = (M[k,j] y3 - y_k M[2,j]) / y3^2
+    P = np.append(point_3d, 1)
+    J = []
+    for M in camera_matrices:
+        y = M.dot(P)
+        for k in range(2):
+            J.append((M[k, :3] * y[2] - y[k] * M[2, :3]) / y[2]**2)
+    return np.array(J)</code></pre></div>
+<!-- code:end -->
+<p><b>4(d) Gauss–Newton.</b> Start from the linear estimate and apply exactly 10 updates (no early stopping), as required:</p>
+<div class="math">$$\hat P \leftarrow \hat P - (J^\top J)^{-1} J^\top e$$</div>
+
+<!-- code:start 4(d) -->
+<div class="code-block"><div class="code-label"><span>Code · 4(d)</span><code>SourceCode/p4.py</code> · <code>nonlinear_estimate_3d_point()</code></div><pre class="code"><code>def nonlinear_estimate_3d_point(image_points, camera_matrices):
+    # PDF 4(d): Gauss-Newton initialized with the linear estimate, run for
+    # exactly 10 iterations (no early termination):
+    #   P_hat = P_hat - (J^T J)^-1 J^T e
+    point_3d = linear_estimate_3d_point(image_points, camera_matrices)
+    for _ in range(10):
+        e = reprojection_error(point_3d, image_points, camera_matrices)
+        J = jacobian(point_3d, camera_matrices)
+        point_3d = point_3d - np.linalg.inv(J.T.dot(J)).dot(J.T).dot(e)
+    return point_3d</code></pre></div>
+<!-- code:end -->
+<div class="table-wrap"><table>
+<thead><tr><th>Test printed by p4.py</th><th>Result</th><th>Expected</th></tr></thead>
+<tbody>
+<tr><td>4(b) |estimated − expected 3D point|, summed</td><td>0.0029</td><td>near zero</td></tr>
+<tr><td>4(c) reprojection error difference</td><td>8.30 × 10⁻⁷</td><td>near zero</td></tr>
+<tr><td>4(c) Jacobian difference</td><td>1.82 × 10⁻⁸</td><td>near zero</td></tr>
+<tr><td>4(d) reprojection error, linear → nonlinear</td><td>98.735 → 95.595</td><td>nonlinear lower</td></tr>
+</tbody></table></div>
+<p>The 4(b) difference is not exactly zero because the example RT and the expected point are printed to only four
+decimals. Gauss–Newton lowers the reprojection error because it minimises the image-space error directly, whereas the DLT
+minimises an algebraic error.</p>
+
+<h3 id="choosert">4(e) Choosing the correct R, T</h3>
+<ol class="steps">
+  <li><b>Triangulate.</b> For each of the four candidates, set \(M_1 = K[I\,|\,0]\) and \(M_2 = K[R\,|\,T]\), and
+      triangulate every correspondence with the nonlinear estimate from 4(d). The resulting point X is in camera 1's
+      frame.</li>
+  <li><b>Test depth in both cameras.</b> Transform the point into camera 2's frame with \(X_2 = RX + T\). The point is in
+      front of both cameras if \(X_z > 0\) and \(X_{2,z} > 0\).</li>
+  <li><b>Pick the best candidate.</b> Return the R, T with the most points in front of both cameras. The other three
+      candidates put the points behind one or both cameras.</li>
+</ol>
+<!-- code:start 4(e) -->
+<div class="code-block"><div class="code-label"><span>Code · 4(e)</span><code>SourceCode/p4.py</code> · <code>estimate_RT_from_E()</code></div><pre class="code"><code>def estimate_RT_from_E(E, image_points, K):
+    candidate_RTs = estimate_initial_RT(E)
+
+    # Camera 1 is the reference frame: M1 = K [I | 0]
+    M1 = K.dot(np.hstack((np.eye(3), np.zeros((3, 1)))))
+
+    best_count = -1
+    best_RT = None
+    for RT in candidate_RTs:
+        camera_matrices = np.array([M1, K.dot(RT)])
+        R, T = RT[:, :3], RT[:, 3]
+        count = 0
+        for points in image_points:
+            # 1. Triangulate the 3D point (in camera 1&#x27;s frame) for this R, T.
+            X = nonlinear_estimate_3d_point(points, camera_matrices)
+            # 2. Transform it into camera 2&#x27;s frame and test depth in both.
+            X2 = R.dot(X) + T
+            if X[2] &gt; 0 and X2[2] &gt; 0:
+                count += 1
+        # The correct R, T puts the most points in front of both cameras.
+        if count &gt; best_count:
+            best_count = count
+            best_RT = RT
+    return best_RT</code></pre></div>
+<!-- code:end -->
+<p>Result: the selected RT is \([R_2\,|\,u_3]\), identical to the example RT shown in 4(a). The decision is clear-cut.
+On the 50 matches of the first statue image pair, \([R_2\,|\,u_3]\) puts <b>50 of 50</b> points in front of both cameras,
+and each of the other three candidates puts <b>0 of 50</b>.</p>
+
+<h3 id="statue">4(f) Statue reconstruction</h3>
+<p>With <code>run_pipeline = True</code>, the pipeline in <code>p4.py</code> and <code>sfm_utils.py</code> runs in four
+steps:</p>
+<ol class="steps">
+  <li>For each of the 4 consecutive image pairs, it estimates R, T with <code>estimate_RT_from_E</code> and triangulates
+      the matches.</li>
+  <li>It refines each pair with bundle adjustment.</li>
+  <li>It merges all pairs into one set of cameras.</li>
+  <li>It triangulates the dense matches between consecutive cameras with <code>nonlinear_estimate_3d_point</code>. The
+      result is <b>66,385 points</b>.</li>
+</ol>
+<figure class="plain result"><a href="results/images/p4_statue.png" target="_blank" rel="noopener"><img src="results/images/p4_statue.png" alt="Statue point cloud, frontal view"></a><figcaption><b>Final reconstruction (frontal view)</b> The plot produced by p4.py: 66,385 points showing the head with its curls (top), the neck and the base (bottom).</figcaption></figure>
+<div class="viewer" id="statue-viewer">
+  <div class="viewer-head">
+    <div><b>Interactive 3D viewer</b> <span class="viewer-sub">all 66,385 reconstructed points · drag to rotate, scroll to zoom, right-drag to pan</span></div>
+    <div class="viewer-controls">
+      <label>Point size <input type="range" id="sv-size" min="1" max="6" step="0.5" value="2"></label>
+      <button type="button" id="sv-spin" aria-pressed="false">Auto-rotate</button>
+      <button type="button" id="sv-reset">Reset view</button>
+    </div>
+  </div>
+  <div class="viewer-canvas" id="sv-canvas" role="img" aria-label="Interactive 3D point cloud of the reconstructed statue">
+    <p class="viewer-msg" id="sv-msg">Loading point cloud…</p>
+  </div>
+  <div class="viewer-legend"><span>near camera</span><i class="viewer-ramp"></i><span>far (depth z = 2.7 → 4.8)</span></div>
+</div>
+<div class="grid-2">
+  <figure class="plain"><a href="results/images/p4_statue_oblique.png" target="_blank" rel="noopener"><img src="results/images/p4_statue_oblique.png" alt="Statue point cloud, oblique view"></a><figcaption><b>Oblique view</b> The same points rotated, showing that the cloud is a 3D surface.</figcaption></figure>
+  <figure class="plain"><a href="results/images/p4_statue_side.png" target="_blank" rel="noopener"><img src="results/images/p4_statue_side.png" alt="Statue point cloud, side view"></a><figcaption><b>Depth profile</b> Viewed from the side: the head and the base sit at different depths from the camera.</figcaption></figure>
+</div>
+<p><b>Why a larger scene, such as a house, is harder to reconstruct than the statue:</b></p>
+<ul>
+  <li><b>Many more views, and drift.</b> The statue is covered by 5 photos over a small arc. A house needs many images
+      around and inside it. Chaining pairwise R, T estimates accumulates error (drift), and the loop around the building
+      must be closed consistently, which requires a global bundle adjustment over far more cameras and points. The cost
+      also grows quickly, and this Python pipeline already takes noticeable time for the statue.</li>
+  <li><b>Occlusion and short tracks.</b> Walls, corners and rooms hide most of the scene from any one viewpoint, so each
+      point is seen in only a few images and is triangulated less reliably.</li>
+  <li><b>Hard surfaces to match.</b> Houses have large textureless areas (painted walls), repetitive patterns (bricks,
+      windows, tiles) and reflective or transparent glass. These produce few correct correspondences and many wrong ones.</li>
+  <li><b>Large depth range.</b> Distant parts are seen with small parallax and are triangulated poorly. Nearby parts change
+      appearance strongly between views, which makes them hard to match.</li>
+  <li><b>Planar, changing scenes.</b> Dominant planar façades make F and E estimation ill-conditioned (coplanar points are a
+      degenerate case for the eight-point algorithm). Outdoors, lighting changes and moving objects (trees, cars, people) break the static-scene
+      assumption.</li>
+</ul>
+</section>
+</main>
+</div>
+
+<footer>SYDE 671 · University of Waterloo · Based on Stanford CS231A Problem Set 2</footer>
+
+<script>
+// Open collapsed sections when printing, so the PDF contains everything
+window.addEventListener("beforeprint", () => document.querySelectorAll("details").forEach(d => d.open = true));
+// Highlight the current section in the table of contents
+const links = [...document.querySelectorAll("nav.toc a")];
+const targets = links.map(a => document.querySelector(a.getAttribute("href"))).filter(Boolean);
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      links.forEach(a => a.classList.toggle("active", a.getAttribute("href") === "#" + e.target.id));
+    }
+  });
+}, { rootMargin: "0px 0px -75% 0px" });
+targets.forEach(t => observer.observe(t));
+</script>
+<script src="results/statue_points.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/controls/OrbitControls.js"></script>
+<script>
+// Interactive viewer for the 4(f) statue point cloud (data: results/statue_points.js, exported from p4.py)
+(function () {
+  const box = document.getElementById("sv-canvas"), msg = document.getElementById("sv-msg");
+  if (!box) return;
+  const D = window.STATUE_POINTS;
+  if (!D || !window.THREE || !THREE.OrbitControls) { msg.textContent = "3D viewer unavailable (data or three.js failed to load); see the static views above and below."; return; }
+  let renderer;
+  try { renderer = new THREE.WebGLRenderer({ antialias: true }); }
+  catch (e) { msg.textContent = "3D viewer needs WebGL, which this browser has disabled; see the static views."; return; }
+
+  // Decode int16-quantized coordinates
+  const bin = atob(D.data), n = D.count, q = new Int16Array(n * 3), u8 = new Uint8Array(q.buffer);
+  for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+  const raw = new Float32Array(n * 3);
+  for (let i = 0; i < n * 3; i++) { const k = i % 3; raw[i] = (q[i] + 32768) / 65535 * (D.max[k] - D.min[k]) + D.min[k]; }
+
+  // Reconstruction frame -> three.js: rotate 180 deg about y (x -> -x, z -> -z; a proper rotation, no mirroring) so the
+  // statue is upright and seen from the cameras' side, matching the frontal plot of p4.py; centre on the median
+  const med = k => { const a = []; for (let i = k; i < n * 3; i += 3) a.push(raw[i]); a.sort((x, y) => x - y); return a[a.length >> 1]; };
+  const c = [med(0), med(1), med(2)];
+  const pos = new Float32Array(n * 3), col = new Float32Array(n * 3);
+  const zs = []; for (let i = 2; i < n * 3; i += 3) zs.push(raw[i]); zs.sort((x, y) => x - y);
+  const z0 = zs[Math.floor(0.01 * n)], z1 = zs[Math.floor(0.99 * n)];
+  // Sequential single-hue ramp (dataviz blue 700 -> 250): near = dark, far = light
+  const ramp = ["#0d366b", "#184f95", "#256abf", "#3987e5", "#6da7ec", "#86b6ef"].map(h => new THREE.Color(h));
+  const tmp = new THREE.Color();
+  for (let i = 0; i < n; i++) {
+    const x = raw[3*i], y = raw[3*i+1], z = raw[3*i+2];
+    pos[3*i] = -(x - c[0]); pos[3*i+1] = y - c[1]; pos[3*i+2] = -(z - c[2]);
+    let t = Math.min(1, Math.max(0, (z - z0) / (z1 - z0))) * (ramp.length - 1);
+    const j = Math.min(ramp.length - 2, Math.floor(t));
+    tmp.copy(ramp[j]).lerp(ramp[j + 1], t - j);
+    col[3*i] = tmp.r; col[3*i+1] = tmp.g; col[3*i+2] = tmp.b;
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute("position", new THREE.BufferAttribute(pos, 3));
+  geo.setAttribute("color", new THREE.BufferAttribute(col, 3));
+  geo.computeBoundingSphere();
+  const R = geo.boundingSphere.radius;
+
+  const scene = new THREE.Scene(); scene.background = new THREE.Color(0xffffff);
+  const mat = new THREE.PointsMaterial({ size: 2, sizeAttenuation: false, vertexColors: true });
+  scene.add(new THREE.Points(geo, mat));
+  const cam = new THREE.PerspectiveCamera(40, 1, R / 100, R * 50);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  msg.remove(); box.appendChild(renderer.domElement);
+  const ctl = new THREE.OrbitControls(cam, renderer.domElement);
+  ctl.enableDamping = true; ctl.autoRotateSpeed = 1.5;
+  const home = () => { cam.position.set(0, 0, R * 2.4); cam.up.set(0, 1, 0); ctl.target.set(0, 0, 0); ctl.update(); };
+  home();
+
+  const resize = () => { const w = box.clientWidth, h = box.clientHeight; renderer.setSize(w, h, false); cam.aspect = w / h; cam.updateProjectionMatrix(); };
+  new ResizeObserver(resize).observe(box); resize();
+
+  document.getElementById("sv-size").addEventListener("input", e => { mat.size = +e.target.value; });
+  const spin = document.getElementById("sv-spin");
+  spin.addEventListener("click", () => { ctl.autoRotate = !ctl.autoRotate; spin.setAttribute("aria-pressed", ctl.autoRotate); });
+  document.getElementById("sv-reset").addEventListener("click", home);
+
+  // Render only while the viewer is on screen
+  let visible = true;
+  new IntersectionObserver(es => { visible = es[0].isIntersecting; }).observe(box);
+  (function loop() { requestAnimationFrame(loop); if (!visible) return; ctl.update(); renderer.render(scene, cam); })();
+})();
+</script>
+</body>
+</html>
