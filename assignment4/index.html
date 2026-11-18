@@ -176,6 +176,13 @@ td .katex { font-size: 0.95em; }
 .viewer-legend { display: flex; align-items: center; gap: 10px; padding: 8px 14px; border-top: 1px solid var(--border); font-size: 13px; color: var(--muted); }
 .viewer-ramp { flex: 0 1 220px; height: 10px; border-radius: 5px; background: linear-gradient(90deg, #0d366b, #184f95, #256abf, #3987e5, #6da7ec, #86b6ef); }
 @media print { .viewer { display: none; } }
+.viewer-pair { display: grid; grid-template-columns: 1fr 1fr; }
+.viewer-pair > div + div { border-left: 1px solid var(--border); }
+.viewer-label { font-size: 13px; font-weight: 600; color: var(--muted); padding: 8px 14px 0; }
+.viewer-canvas.small { height: min(50vh, 360px); }
+@media (max-width: 620px) { .viewer-pair { grid-template-columns: 1fr; } .viewer-pair > div + div { border-left: 0; border-top: 1px solid var(--border); } }
+figure.print-img, .viewer-legend[hidden] { display: none; }
+@media print { figure.print-img { display: block; } }
 .code-block { margin: 18px 0; max-width: 100%; }
 .code-label { font-size: 13px; color: var(--muted); margin-bottom: 4px; }
 .code-label span { font-weight: 600; color: var(--accent); text-transform: uppercase; letter-spacing: .08em; margin-right: 8px; }
@@ -576,7 +583,17 @@ m = 2 images (set 1), and compare with the ground-truth 3D points.</p>
     return structure, motion</code></pre></div>
 <!-- code:end -->
 <h3 id="fullset">3(c–d) Full point set: comparison and singular values</h3>
-<figure class="plain wide"><a href="results/images/p3_full.png" target="_blank" rel="noopener"><img src="results/images/p3_full.png" alt="Factorization reconstruction next to ground truth, full set"></a><figcaption><b>Set 1, all 37 points</b> Factorization result (left) and ground truth (right).</figcaption></figure>
+<div class="viewer" id="p3-full">
+  <div class="viewer-head">
+    <div><b>Set 1, all 37 points</b> <span class="viewer-sub">drag to rotate, scroll to zoom, right-drag to pan</span></div>
+    <div class="viewer-controls"><button type="button" data-reset>Reset view</button></div>
+  </div>
+  <div class="viewer-pair">
+    <div><div class="viewer-label">Factorization method</div><div class="viewer-canvas small" data-set="recon"><p class="viewer-msg">Loading…</p></div></div>
+    <div><div class="viewer-label">Ground truth</div><div class="viewer-canvas small" data-set="gt"><p class="viewer-msg">Loading…</p></div></div>
+  </div>
+</div>
+<figure class="plain wide print-img"><img src="results/images/p3_full.png" alt="Factorization reconstruction next to ground truth, full set"><figcaption><b>Set 1, all 37 points</b> Factorization result (left) and ground truth (right).</figcaption></figure>
 <p><b>3(c) Why the result differs by a scaling and rotation.</b> The two point clouds have the same shape, but different
 size and orientation. This is because the factorization \(D = MS\) is not unique: for any invertible 3 × 3 matrix Q,</p>
 <div class="math">$$D = M S = (M Q)(Q^{-1} S)$$</div>
@@ -605,7 +622,17 @@ affine.</p>
 </ul>
 
 <h3 id="subset">3(e–f) Subset of points</h3>
-<figure class="plain wide"><a href="results/images/p3_subset.png" target="_blank" rel="noopener"><img src="results/images/p3_subset.png" alt="Factorization reconstruction next to ground truth, subset"></a><figcaption><b>Set 1 subset, 18 points</b> Factorization result (left) and ground truth (right).</figcaption></figure>
+<div class="viewer" id="p3-subset">
+  <div class="viewer-head">
+    <div><b>Set 1 subset, 18 points</b> <span class="viewer-sub">drag to rotate, scroll to zoom, right-drag to pan</span></div>
+    <div class="viewer-controls"><button type="button" data-reset>Reset view</button></div>
+  </div>
+  <div class="viewer-pair">
+    <div><div class="viewer-label">Factorization method</div><div class="viewer-canvas small" data-set="recon"><p class="viewer-msg">Loading…</p></div></div>
+    <div><div class="viewer-label">Ground truth</div><div class="viewer-canvas small" data-set="gt"><p class="viewer-msg">Loading…</p></div></div>
+  </div>
+</div>
+<figure class="plain wide print-img"><img src="results/images/p3_subset.png" alt="Factorization reconstruction next to ground truth, subset"><figcaption><b>Set 1 subset, 18 points</b> Factorization result (left) and ground truth (right).</figcaption></figure>
 <p><b>3(e) Why the result is no longer as similar.</b> The subset's 18 points are almost coplanar. The singular values of
 the centered ground-truth points are 17.28, 14.18 and only 0.38, compared with 52.28, 41.19 and 23.45 for the full set.
 This has three consequences:</p>
@@ -809,12 +836,16 @@ steps:</p>
   <li>It triangulates the dense matches between consecutive cameras with <code>nonlinear_estimate_3d_point</code>. The
       result is <b>66,385 points</b>.</li>
 </ol>
-<figure class="plain result"><a href="results/images/p4_statue.png" target="_blank" rel="noopener"><img src="results/images/p4_statue.png" alt="Statue point cloud, frontal view"></a><figcaption><b>Final reconstruction (frontal view)</b> The plot produced by p4.py: 66,385 points showing the head with its curls (top), the neck and the base (bottom).</figcaption></figure>
+<div class="grid-2">
+  <figure class="plain"><a href="results/images/statue_B21.jpg" target="_blank" rel="noopener"><img src="results/images/statue_B21.jpg" alt="Original statue image B21"></a><figcaption><b>Original image</b> B21.jpg, the first image of the sequence.</figcaption></figure>
+  <figure class="plain"><a href="results/images/p4_statue.png" target="_blank" rel="noopener"><img src="results/images/p4_statue.png" alt="Statue point cloud, frontal view"></a><figcaption><b>Final reconstruction (frontal view)</b> The plot produced by p4.py: 66,385 points showing the head with its curls (top), the neck and the base (bottom).</figcaption></figure>
+</div>
 <div class="viewer" id="statue-viewer">
   <div class="viewer-head">
     <div><b>Interactive 3D viewer</b> <span class="viewer-sub">all 66,385 reconstructed points · drag to rotate, scroll to zoom, right-drag to pan</span></div>
     <div class="viewer-controls">
       <label>Point size <input type="range" id="sv-size" min="1" max="6" step="0.5" value="2"></label>
+      <button type="button" id="sv-color" aria-pressed="true">Colored</button>
       <button type="button" id="sv-spin" aria-pressed="false">Auto-rotate</button>
       <button type="button" id="sv-reset">Reset view</button>
     </div>
@@ -822,7 +853,8 @@ steps:</p>
   <div class="viewer-canvas" id="sv-canvas" role="img" aria-label="Interactive 3D point cloud of the reconstructed statue">
     <p class="viewer-msg" id="sv-msg">Loading point cloud…</p>
   </div>
-  <div class="viewer-legend"><span>near camera</span><i class="viewer-ramp"></i><span>far (depth z = 2.7 → 4.8)</span></div>
+  <div class="viewer-legend" id="sv-legend-rgb">Each point has the pixel colour of its match in the first image of its pair. Turn off <b>Colored</b> to colour by depth.</div>
+  <div class="viewer-legend" id="sv-legend-depth" hidden><span>near camera</span><i class="viewer-ramp"></i><span>far (depth z = 2.7 → 4.8)</span></div>
 </div>
 <div class="grid-2">
   <figure class="plain"><a href="results/images/p4_statue_oblique.png" target="_blank" rel="noopener"><img src="results/images/p4_statue_oblique.png" alt="Statue point cloud, oblique view"></a><figcaption><b>Oblique view</b> The same points rotated, showing that the cloud is a 3D surface.</figcaption></figure>
@@ -866,6 +898,7 @@ const observer = new IntersectionObserver(entries => {
 targets.forEach(t => observer.observe(t));
 </script>
 <script src="results/statue_points.js"></script>
+<script src="results/p3_points.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/controls/OrbitControls.js"></script>
 <script>
@@ -885,11 +918,13 @@ targets.forEach(t => observer.observe(t));
   const raw = new Float32Array(n * 3);
   for (let i = 0; i < n * 3; i++) { const k = i % 3; raw[i] = (q[i] + 32768) / 65535 * (D.max[k] - D.min[k]) + D.min[k]; }
 
-  // Reconstruction frame -> three.js: rotate 180 deg about y (x -> -x, z -> -z; a proper rotation, no mirroring) so the
-  // statue is upright and seen from the cameras' side, matching the frontal plot of p4.py; centre on the median
+  // Camera frame (x right, y down, z forward) -> three.js (y up): rotate 180 deg about x (y -> -y, z -> -z; a proper
+  // rotation, no mirroring) so the statue is upright and seen from the cameras' side, matching the frontal plot of p4.py; centre on the median
   const med = k => { const a = []; for (let i = k; i < n * 3; i += 3) a.push(raw[i]); a.sort((x, y) => x - y); return a[a.length >> 1]; };
   const c = [med(0), med(1), med(2)];
-  const pos = new Float32Array(n * 3), col = new Float32Array(n * 3);
+  const pos = new Float32Array(n * 3), col = new Float32Array(n * 3), rgb = new Float32Array(n * 3);
+  const rb = D.rgb ? atob(D.rgb) : null;
+  for (let i = 0; rb && i < n * 3; i++) rgb[i] = rb.charCodeAt(i) / 255;
   const zs = []; for (let i = 2; i < n * 3; i += 3) zs.push(raw[i]); zs.sort((x, y) => x - y);
   const z0 = zs[Math.floor(0.01 * n)], z1 = zs[Math.floor(0.99 * n)];
   // Sequential single-hue ramp (dataviz blue 700 -> 250): near = dark, far = light
@@ -897,7 +932,7 @@ targets.forEach(t => observer.observe(t));
   const tmp = new THREE.Color();
   for (let i = 0; i < n; i++) {
     const x = raw[3*i], y = raw[3*i+1], z = raw[3*i+2];
-    pos[3*i] = -(x - c[0]); pos[3*i+1] = y - c[1]; pos[3*i+2] = -(z - c[2]);
+    pos[3*i] = x - c[0]; pos[3*i+1] = -(y - c[1]); pos[3*i+2] = -(z - c[2]);
     let t = Math.min(1, Math.max(0, (z - z0) / (z1 - z0))) * (ramp.length - 1);
     const j = Math.min(ramp.length - 2, Math.floor(t));
     tmp.copy(ramp[j]).lerp(ramp[j + 1], t - j);
@@ -905,7 +940,8 @@ targets.forEach(t => observer.observe(t));
   }
   const geo = new THREE.BufferGeometry();
   geo.setAttribute("position", new THREE.BufferAttribute(pos, 3));
-  geo.setAttribute("color", new THREE.BufferAttribute(col, 3));
+  const colAttr = new THREE.BufferAttribute(rb ? rgb.slice() : col.slice(), 3);
+  geo.setAttribute("color", colAttr);
   geo.computeBoundingSphere();
   const R = geo.boundingSphere.radius;
 
@@ -927,11 +963,64 @@ targets.forEach(t => observer.observe(t));
   const spin = document.getElementById("sv-spin");
   spin.addEventListener("click", () => { ctl.autoRotate = !ctl.autoRotate; spin.setAttribute("aria-pressed", ctl.autoRotate); });
   document.getElementById("sv-reset").addEventListener("click", home);
+  const colBtn = document.getElementById("sv-color");
+  if (!rb) colBtn.hidden = true;
+  const setColored = on => {
+    colAttr.array.set(on ? rgb : col); colAttr.needsUpdate = true;
+    colBtn.setAttribute("aria-pressed", on);
+    document.getElementById("sv-legend-rgb").hidden = !on;
+    document.getElementById("sv-legend-depth").hidden = on;
+  };
+  setColored(!!rb);
+  colBtn.addEventListener("click", () => setColored(colBtn.getAttribute("aria-pressed") !== "true"));
 
   // Render only while the viewer is on screen
   let visible = true;
   new IntersectionObserver(es => { visible = es[0].isIntersecting; }).observe(box);
   (function loop() { requestAnimationFrame(loop); if (!visible) return; ctl.update(); renderer.render(scene, cam); })();
+})();
+</script>
+<script>
+// 3(c-f) viewers: factorization output vs ground truth (data: results/p3_points.js, exported from p3.py)
+(function () {
+  const sets = window.P3_POINTS;
+  document.querySelectorAll(".viewer[id^=p3-]").forEach(v => {
+    const key = v.id.slice(3), views = [];
+    v.querySelectorAll("[data-set]").forEach(box => {
+      const msg = box.querySelector(".viewer-msg");
+      if (!sets || !window.THREE || !THREE.OrbitControls) { msg.textContent = "3D viewer unavailable."; return; }
+      let renderer;
+      try { renderer = new THREE.WebGLRenderer({ antialias: true }); } catch (e) { msg.textContent = "3D viewer needs WebGL."; return; }
+      const P = sets[key][box.dataset.set], n = P.length, c = [0, 0, 0];
+      P.forEach(p => { for (let k = 0; k < 3; k++) c[k] += p[k] / n; });
+      const pos = new Float32Array(n * 3);
+      P.forEach((p, i) => { for (let k = 0; k < 3; k++) pos[3*i+k] = p[k] - c[k]; });
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute("position", new THREE.BufferAttribute(pos, 3));
+      geo.computeBoundingSphere(); const R = geo.boundingSphere.radius;
+      // round markers
+      const dot = document.createElement("canvas"); dot.width = dot.height = 64;
+      const g = dot.getContext("2d"); g.fillStyle = "#fff"; g.beginPath(); g.arc(32, 32, 30, 0, 2 * Math.PI); g.fill();
+      const mat = new THREE.PointsMaterial({ size: 9, sizeAttenuation: false, color: box.dataset.set === "gt" ? 0x2f6f4e : 0x256abf,
+        map: new THREE.CanvasTexture(dot), alphaTest: 0.5 });
+      const scene = new THREE.Scene(); scene.background = new THREE.Color(0xffffff);
+      scene.add(new THREE.Points(geo, mat));
+      const box3 = new THREE.Box3().setFromBufferAttribute(geo.attributes.position);
+      scene.add(new THREE.Box3Helper(box3, 0xc5cdd9));
+      scene.add(new THREE.AxesHelper(R * 0.5));
+      const cam = new THREE.PerspectiveCamera(40, 1, R / 100, R * 50);
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+      msg.remove(); box.appendChild(renderer.domElement);
+      const ctl = new THREE.OrbitControls(cam, renderer.domElement); ctl.enableDamping = true;
+      const home = () => { cam.position.set(R * 2.2, R * 1.7, R * 2.6); cam.up.set(0, 0, 1); ctl.target.set(0, 0, 0); ctl.update(); };
+      home(); views.push(home);
+      const resize = () => { const w = box.clientWidth, h = box.clientHeight; renderer.setSize(w, h, false); cam.aspect = w / h; cam.updateProjectionMatrix(); };
+      new ResizeObserver(resize).observe(box); resize();
+      let visible = true; new IntersectionObserver(es => { visible = es[0].isIntersecting; }).observe(box);
+      (function loop() { requestAnimationFrame(loop); if (!visible) return; ctl.update(); renderer.render(scene, cam); })();
+    });
+    v.querySelector("[data-reset]").addEventListener("click", () => views.forEach(h => h()));
+  });
 })();
 </script>
 </body>
