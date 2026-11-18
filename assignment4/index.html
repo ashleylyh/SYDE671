@@ -993,8 +993,8 @@ targets.forEach(t => observer.observe(t));
       try { renderer = new THREE.WebGLRenderer({ antialias: true }); } catch (e) { msg.textContent = "3D viewer needs WebGL."; return; }
       const P = sets[key][box.dataset.set], n = P.length, c = [0, 0, 0];
       P.forEach(p => { for (let k = 0; k < 3; k++) c[k] += p[k] / n; });
-      const pos = new Float32Array(n * 3);
-      P.forEach((p, i) => { for (let k = 0; k < 3; k++) pos[3*i+k] = p[k] - c[k]; });
+      const pos = new Float32Array(n * 3);   // original coordinates, so the axis ticks show the real units
+      P.forEach((p, i) => { for (let k = 0; k < 3; k++) pos[3*i+k] = p[k]; });
       const geo = new THREE.BufferGeometry();
       geo.setAttribute("position", new THREE.BufferAttribute(pos, 3));
       geo.computeBoundingSphere(); const R = geo.boundingSphere.radius;
@@ -1005,14 +1005,40 @@ targets.forEach(t => observer.observe(t));
         map: new THREE.CanvasTexture(dot), alphaTest: 0.5 });
       const scene = new THREE.Scene(); scene.background = new THREE.Color(0xffffff);
       scene.add(new THREE.Points(geo, mat));
-      const box3 = new THREE.Box3().setFromBufferAttribute(geo.attributes.position);
-      scene.add(new THREE.Box3Helper(box3, 0xc5cdd9));
-      scene.add(new THREE.AxesHelper(R * 0.5));
+      // Cube around the points (equal axes, as scatter_3D_axis_equal) with ticked, labelled x / y / z axes
+      const half = Math.max(...[0, 1, 2].map(k => { let lo = Infinity, hi = -Infinity; P.forEach(p => { lo = Math.min(lo, p[k]); hi = Math.max(hi, p[k]); }); return (hi - lo) / 2; }));
+      const mid = [0, 1, 2].map(k => { let lo = Infinity, hi = -Infinity; P.forEach(p => { lo = Math.min(lo, p[k]); hi = Math.max(hi, p[k]); }); return (lo + hi) / 2; });
+      const lo = mid.map(m => m - half), hi = mid.map(m => m + half);
+      scene.add(new THREE.Box3Helper(new THREE.Box3(new THREE.Vector3(...lo), new THREE.Vector3(...hi)), 0xc5cdd9));
+      const label = (text, at, bold) => {
+        const cv = document.createElement("canvas"); cv.width = 128; cv.height = 48;
+        const g2 = cv.getContext("2d"); g2.font = (bold ? "600 " : "") + "28px -apple-system, Segoe UI, Arial, sans-serif";
+        g2.fillStyle = bold ? "#1a2233" : "#5a6475"; g2.textAlign = "center"; g2.textBaseline = "middle"; g2.fillText(text, 64, 24);
+        const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(cv), sizeAttenuation: false, depthTest: false }));
+        sp.scale.set(0.12, 0.045, 1); sp.position.set(...at); scene.add(sp);
+      };
+      const step = (() => { const r = 2 * half / 4, p = Math.pow(10, Math.floor(Math.log10(r))), f = r / p; return (f < 1.5 ? 1 : f < 3.5 ? 2 : f < 7.5 ? 5 : 10) * p; })();
+      const tickPts = [], off = half * 0.12;
+      [0, 1, 2].forEach(k => {
+        // matplotlib layout: x along (y min, z min), y along (x max, z min), z along (x max, y max)
+        const base = [lo[0], lo[1], lo[2]]; if (k >= 1) base[0] = hi[0]; if (k === 2) base[1] = hi[1];
+        for (let t = Math.ceil(lo[k] / step) * step; t <= hi[k] + 1e-9; t += step) {
+          const a = base.slice(); a[k] = t; const b = a.slice(), l = a.slice();
+          const out = k === 1 ? 0 : 1, sgn = k === 0 ? -1 : 1;   // tick direction: away from the cube
+          b[out] += sgn * off * 0.4; l[out] += sgn * off * 1.4;
+          tickPts.push(...a, ...b); label(+t.toFixed(6) + "", l);
+        }
+        const nl = base.slice(); nl[k] = mid[k]; const o2 = k === 1 ? 0 : 1, s2 = k === 0 ? -1 : 1; nl[o2] += s2 * off * (k === 2 ? 4.2 : 3); label("xyz"[k], nl, true);
+      });
+      const tg = new THREE.BufferGeometry(); tg.setAttribute("position", new THREE.Float32BufferAttribute(tickPts, 3));
+      scene.add(new THREE.LineSegments(tg, new THREE.LineBasicMaterial({ color: 0x8a94a6 })));
       const cam = new THREE.PerspectiveCamera(40, 1, R / 100, R * 50);
       renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
       msg.remove(); box.appendChild(renderer.domElement);
       const ctl = new THREE.OrbitControls(cam, renderer.domElement); ctl.enableDamping = true;
-      const home = () => { cam.position.set(R * 2.2, R * 1.7, R * 2.6); cam.up.set(0, 0, 1); ctl.target.set(0, 0, 0); ctl.update(); };
+      const home = () => { // matplotlib's standard 3D view: elevation 30 deg, azimuth -60 deg
+        const el = Math.PI / 6, az = -Math.PI / 3, d = R * 4.8;
+        cam.position.set(c[0] + d * Math.cos(el) * Math.cos(az), c[1] + d * Math.cos(el) * Math.sin(az), c[2] + d * Math.sin(el)); cam.up.set(0, 0, 1); ctl.target.set(...c); ctl.update(); };
       home(); views.push(home);
       const resize = () => { const w = box.clientWidth, h = box.clientHeight; renderer.setSize(w, h, false); cam.aspect = w / h; cam.updateProjectionMatrix(); };
       new ResizeObserver(resize).observe(box); resize();
