@@ -7,6 +7,7 @@ Published with GitHub Pages at <https://ashleylyh.github.io/SYDE671/>.
 | Assignment 1: Becoming friends with the camera & Colorizing the Prokudin-Gorskii collection | <https://ashleylyh.github.io/SYDE671/assignment1/> |
 | Assignment 2: Fun with Filters and Frequencies | <https://ashleylyh.github.io/SYDE671/assignment2/> |
 | Assignment 3: [Auto]Stitching Photo Mosaics | <https://ashleylyh.github.io/SYDE671/assignment3/> |
+| Assignment 4: Epipolar Geometry and Structure from Motion | <https://ashleylyh.github.io/SYDE671/assignment4/> |
 
 ## Layout
 
